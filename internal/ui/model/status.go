@@ -81,6 +81,12 @@ func (s *Status) Draw(scr uv.Screen, area uv.Rectangle) {
 		uv.NewStyledString(helpView).Draw(scr, area)
 	}
 
+	if s.goalOn {
+		badge := s.com.Styles.Status.InfoMessage.Bold(true).Render(" GOAL ")
+		x := max(0, area.Dx()-lipgloss.Width(badge))
+		uv.NewStyledString(badge).Draw(scr, area.Add(image.Pt(x, 0)))
+	}
+
 	// Render notifications
 	if s.msg.IsEmpty() {
 		return
@@ -120,11 +126,6 @@ func (s *Status) Draw(scr uv.Screen, area uv.Rectangle) {
 	// Draw the info message over the help view
 	uv.NewStyledString(ind+info).Draw(scr, area)
 
-	if s.goalOn {
-		badge := s.com.Styles.Status.InfoMessage.Bold(true).Render(" GOAL ")
-		x := max(0, area.Dx()-lipgloss.Width(badge))
-		uv.NewStyledString(badge).Draw(scr, area.Add(image.Pt(x, 0)))
-	}
 }
 
 // clearInfoMsgCmd returns a command that clears the info message after the
