@@ -266,6 +266,27 @@ func hasRecentRepeatedToolPattern(msgs []message.Message) bool {
 	return false
 }
 
+func hasRecentRiskyShellIntent(msgs []message.Message) bool {
+	for i := len(msgs) - 1; i >= 0; i-- {
+		for _, tc := range msgs[i].ToolCalls() {
+			if tc.Name != tools.BashToolName {
+				continue
+			}
+			input := strings.ToLower(tc.Input)
+			if strings.Contains(input, "rm -rf") ||
+				strings.Contains(input, "git reset --hard") ||
+				strings.Contains(input, "git push --force") ||
+				strings.Contains(input, "git push -f") {
+				return true
+			}
+		}
+		if len(msgs)-i > 40 {
+			break
+		}
+	}
+	return false
+}
+
 func buildRuntimeSystemGuidance(
 	agentTools []fantasy.AgentTool,
 	isSubAgent bool,
@@ -276,6 +297,7 @@ func buildRuntimeSystemGuidance(
 	hasRecentAuthBlockedCall bool,
 	hasRecentExactMatchFailure bool,
 	hasRecentRepeatedPattern bool,
+	hasRecentRiskyShell bool,
 	nonInteractive bool,
 ) string {
 	toolset := map[string]struct{}{}
@@ -340,6 +362,9 @@ func buildRuntimeSystemGuidance(
 	}
 	if hasRecentRepeatedPattern {
 		b.WriteString("- Repeated tool-call pattern detected. Change approach (narrow scope, gather fresh context, or use a different tool) instead of repeating identical calls.\n")
+	}
+	if hasRecentRiskyShell {
+		b.WriteString("- Recent risky shell intent detected. Confirm blast radius and scope before retrying destructive or hard-to-reverse commands.\n")
 	}
 	if nonInteractive {
 		b.WriteString("- This is a non-interactive run: avoid asking follow-up questions unless absolutely required to unblock execution.\n")
@@ -442,6 +467,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		hasRecentAuthBlock(msgs),
 		hasRecentExactMatchEditFailure(msgs),
 		hasRecentRepeatedToolPattern(msgs),
+		hasRecentRiskyShellIntent(msgs),
 		call.NonInteractive,
 	)
 

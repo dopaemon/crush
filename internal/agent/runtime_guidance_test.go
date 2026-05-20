@@ -67,7 +67,7 @@ func TestBuildRuntimeSystemGuidance_IncludesDeniedToolHint(t *testing.T) {
 		&mockAgentTool{name: tools.EditToolName},
 	}
 
-	guidance := buildRuntimeSystemGuidance(agentTools, false, tools.EditToolName, false, false, false, false, false, false, false)
+	guidance := buildRuntimeSystemGuidance(agentTools, false, tools.EditToolName, false, false, false, false, false, false, false, false)
 	require.True(t, strings.Contains(guidance, "recently denied permission"))
 	require.True(t, strings.Contains(guidance, tools.EditToolName))
 }
@@ -113,7 +113,7 @@ func TestBuildRuntimeSystemGuidance_NonInteractive(t *testing.T) {
 	agentTools := []fantasy.AgentTool{
 		&mockAgentTool{name: tools.ViewToolName},
 	}
-	guidance := buildRuntimeSystemGuidance(agentTools, false, "", false, false, false, false, false, false, true)
+	guidance := buildRuntimeSystemGuidance(agentTools, false, "", false, false, false, false, false, false, false, true)
 	require.True(t, strings.Contains(guidance, "non-interactive run"))
 }
 
@@ -181,4 +181,18 @@ func TestHasRecentRepeatedToolPattern(t *testing.T) {
 		},
 	}
 	require.True(t, hasRecentRepeatedToolPattern(msgs))
+}
+
+func TestHasRecentRiskyShellIntent(t *testing.T) {
+	msgs := []message.Message{
+		{
+			Parts: []message.ContentPart{
+				message.ToolCall{
+					Name:  tools.BashToolName,
+					Input: `{"command":"git reset --hard HEAD~1"}`,
+				},
+			},
+		},
+	}
+	require.True(t, hasRecentRiskyShellIntent(msgs))
 }
