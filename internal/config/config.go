@@ -280,6 +280,8 @@ type Options struct {
 	Progress                  *bool        `json:"progress,omitempty" jsonschema:"description=Show indeterminate progress updates during long operations,default=true"`
 	DisableNotifications      bool         `json:"disable_notifications,omitempty" jsonschema:"description=Disable desktop notifications,default=false"`
 	DisabledSkills            []string     `json:"disabled_skills,omitempty" jsonschema:"description=List of skill names to disable and hide from the agent,example=crush-config"`
+	Language                  string       `json:"language,omitempty" jsonschema:"description=Preferred response language for the agent,example=Vietnamese,example=English"`
+	OutputStylePrompt         string       `json:"output_style_prompt,omitempty" jsonschema:"description=Additional output-style instructions appended to the system prompt"`
 }
 
 type MCPs map[string]MCPConfig

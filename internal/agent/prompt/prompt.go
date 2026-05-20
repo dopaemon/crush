@@ -43,6 +43,10 @@ type PromptDat struct {
 	ContextFiles  []ContextFile
 	AvailSkillXML string
 	ToolGuidance  string
+	LanguageSection string
+	OutputStyleSection string
+	MemorySection string
+	MCPInstructionsSection string
 	DynamicBoundary string
 }
 
@@ -241,29 +245,64 @@ func (p *Prompt) promptData(ctx context.Context, provider, model string, store *
 		systemPromptSection("tool_guidance", func(_ PromptDat) string {
 			return renderToolGuidance(p.toolNames, p.isSubAgent)
 		}),
-		uncachedSystemPromptSection("noop_uncached_guard", func(_ PromptDat) string {
-			// Placeholder section to keep parity with section architecture
-			// used by more dynamic prompt builders.
+		systemPromptSection("language", func(d PromptDat) string {
+			if strings.TrimSpace(d.Config.Options.Language) == "" {
+				return ""
+			}
+			lang := strings.TrimSpace(d.Config.Options.Language)
+			return "# Language\nAlways respond in " + lang + ". Use " + lang + " for all explanations and communication with the user. Keep code and identifiers unchanged."
+		}),
+		systemPromptSection("output_style", func(d PromptDat) string {
+			style := strings.TrimSpace(d.Config.Options.OutputStylePrompt)
+			if style == "" {
+				return ""
+			}
+			return "# Output Style\n" + style
+		}),
+		systemPromptSection("memory", func(d PromptDat) string {
+			if len(d.ContextFiles) == 0 {
+				return ""
+			}
+			return "# Memory\nFollow instructions from injected memory/context files (`<memory>` blocks). Treat them as durable user/project preferences unless explicitly overridden by higher-priority instructions."
+		}),
+		uncachedSystemPromptSection("mcp_instructions", func(_ PromptDat) string {
+			// Runtime MCP instructions are appended per-turn in agent.go.
+			// Keep this section uncached so dynamic prompt architecture mirrors
+			// Claude-style cache-break semantics for volatile server instructions.
 			return ""
 		}),
 	}
 	for _, s := range sections {
 		if s.cacheBreak {
-			if s.name == "tool_guidance" {
-				data.ToolGuidance = s.compute(data)
+			if s.name == "mcp_instructions" {
+				data.MCPInstructionsSection = s.compute(data)
 			}
 			continue
 		}
 		if v, ok := p.sections.get(s.name); ok {
-			if s.name == "tool_guidance" {
+			switch s.name {
+			case "tool_guidance":
 				data.ToolGuidance = v
+			case "language":
+				data.LanguageSection = v
+			case "output_style":
+				data.OutputStyleSection = v
+			case "memory":
+				data.MemorySection = v
 			}
 			continue
 		}
 		v := s.compute(data)
 		p.sections.set(s.name, v)
-		if s.name == "tool_guidance" {
+		switch s.name {
+		case "tool_guidance":
 			data.ToolGuidance = v
+		case "language":
+			data.LanguageSection = v
+		case "output_style":
+			data.OutputStyleSection = v
+		case "memory":
+			data.MemorySection = v
 		}
 	}
 	if isGit {

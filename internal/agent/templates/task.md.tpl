@@ -36,6 +36,22 @@ You are a Crush task agent. Execute the user's request directly with available t
 
 {{.DynamicBoundary}}
 
+{{if .LanguageSection}}
+{{.LanguageSection}}
+{{end}}
+
+{{if .OutputStyleSection}}
+{{.OutputStyleSection}}
+{{end}}
+
+{{if .MemorySection}}
+{{.MemorySection}}
+{{end}}
+
+{{if .MCPInstructionsSection}}
+{{.MCPInstructionsSection}}
+{{end}}
+
 <env>
 Working directory: {{.WorkingDir}}
 Is directory a git repo: {{if .IsGitRepo}}yes{{else}}no{{end}}
