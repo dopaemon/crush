@@ -138,6 +138,53 @@ type SessionAgentOptions struct {
 	Notify               pubsub.Publisher[notify.Notification]
 }
 
+func buildRuntimeSystemGuidance(agentTools []fantasy.AgentTool, isSubAgent bool) string {
+	toolset := map[string]struct{}{}
+	for _, t := range agentTools {
+		toolset[t.Info().Name] = struct{}{}
+	}
+
+	has := func(name string) bool {
+		_, ok := toolset[name]
+		return ok
+	}
+
+	var b strings.Builder
+	b.WriteString("<runtime-guidance>\n")
+	b.WriteString("- This guidance is generated from currently available tools and session mode.\n")
+	b.WriteString("- Prefer dedicated tools over bash whenever equivalent capabilities exist.\n")
+
+	if has(tools.ViewToolName) {
+		b.WriteString("- Use view to read file contents before proposing edits.\n")
+	}
+	if has(tools.EditToolName) || has(tools.MultiEditToolName) || has(tools.WriteToolName) {
+		b.WriteString("- Use edit/multiedit/write for file changes; keep edits surgical and in-scope.\n")
+	}
+	if has(tools.GlobToolName) || has(tools.GrepToolName) || has(tools.LSToolName) {
+		b.WriteString("- Use glob/grep/ls for discovery before changing files.\n")
+	}
+	if has(tools.BashToolName) {
+		b.WriteString("- Use bash only for shell/system operations that cannot be done with dedicated tools.\n")
+	}
+	if has(AgentToolName) {
+		b.WriteString("- Use agent for bounded side tasks that benefit from parallelism or context isolation.\n")
+		b.WriteString("- Avoid duplicating work delegated to subagents.\n")
+	}
+	if has(tools.WebSearchToolName) || has(tools.WebFetchToolName) || has(tools.FetchToolName) {
+		b.WriteString("- For web research, iterate focused searches and fetch primary sources before concluding.\n")
+	}
+	if has(tools.TodosToolName) {
+		b.WriteString("- Keep todos updated while working on multi-step tasks.\n")
+	}
+	if isSubAgent {
+		b.WriteString("- You are a subagent: execute directly and avoid recursive delegation unless explicitly required.\n")
+	}
+	b.WriteString("- If a tool call is denied, do not retry the exact same call unchanged.\n")
+	b.WriteString("- Report verification outcomes faithfully; do not claim checks passed without evidence.\n")
+	b.WriteString("</runtime-guidance>")
+	return b.String()
+}
+
 func NewSessionAgent(
 	opts SessionAgentOptions,
 ) SessionAgent {
@@ -183,6 +230,8 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 	systemPrompt := a.systemPrompt.Get()
 	promptPrefix := a.systemPromptPrefix.Get()
 	var instructions strings.Builder
+
+	systemPrompt += "\n\n" + buildRuntimeSystemGuidance(agentTools, a.isSubAgent)
 
 	for _, server := range mcp.GetStates() {
 		if server.State != mcp.StateConnected {
