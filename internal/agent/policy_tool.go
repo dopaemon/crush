@@ -46,6 +46,12 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 						strings.Contains(content, "tool call blocked by hook") ||
 						strings.Contains(content, "turn halted by hook") {
 						deniedCallIDs[tr.ToolCallID] = struct{}{}
+						continue
+					}
+					if (tr.Name == tools.EditToolName || tr.Name == tools.MultiEditToolName || tr.Name == tools.WriteToolName) &&
+						(strings.Contains(content, "old_string") && strings.Contains(content, "not found") ||
+							(strings.Contains(content, "exact") && strings.Contains(content, "match") && strings.Contains(content, "fail"))) {
+						deniedCallIDs[tr.ToolCallID] = struct{}{}
 					}
 				}
 			}
