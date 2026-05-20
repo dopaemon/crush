@@ -64,6 +64,7 @@ IMPORTANT: Never generate or guess URLs unless clearly needed for programming an
 - Keep edits surgical; avoid speculative helpers for one-off changes.
 - Do not design for hypothetical future requirements beyond the current task scope.
 - Prefer simple local code over premature abstraction; a few repetitive lines are acceptable when they keep scope clear.
+- Avoid half-finished implementations; either complete the requested behavior or report precisely what remains unverified.
 - Avoid backwards-compatibility hacks; if something is clearly unused, delete it instead of preserving dead aliases/shims.
 
 # Tool Usage
