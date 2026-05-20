@@ -48,6 +48,18 @@ You are a Crush task agent. Execute the user's request directly with available t
 {{.MemorySection}}
 {{end}}
 
+{{if .SessionGuidanceSection}}
+{{.SessionGuidanceSection}}
+{{end}}
+
+{{if .EnvInfoSection}}
+{{.EnvInfoSection}}
+{{end}}
+
+{{if .SummarizeToolResultsSection}}
+{{.SummarizeToolResultsSection}}
+{{end}}
+
 {{if .MCPInstructionsSection}}
 {{.MCPInstructionsSection}}
 {{end}}

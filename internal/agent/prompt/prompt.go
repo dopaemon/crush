@@ -46,6 +46,9 @@ type PromptDat struct {
 	LanguageSection string
 	OutputStyleSection string
 	MemorySection string
+	SessionGuidanceSection string
+	EnvInfoSection string
+	SummarizeToolResultsSection string
 	MCPInstructionsSection string
 	DynamicBoundary string
 }
@@ -245,6 +248,9 @@ func (p *Prompt) promptData(ctx context.Context, provider, model string, store *
 		systemPromptSection("tool_guidance", func(_ PromptDat) string {
 			return renderToolGuidance(p.toolNames, p.isSubAgent)
 		}),
+		systemPromptSection("session_guidance", func(d PromptDat) string {
+			return renderSessionGuidance(p.toolNames, p.isSubAgent, d.Config.Options)
+		}),
 		systemPromptSection("language", func(d PromptDat) string {
 			if strings.TrimSpace(d.Config.Options.Language) == "" {
 				return ""
@@ -265,6 +271,12 @@ func (p *Prompt) promptData(ctx context.Context, provider, model string, store *
 			}
 			return "# Memory\nFollow instructions from injected memory/context files (`<memory>` blocks). Treat them as durable user/project preferences unless explicitly overridden by higher-priority instructions."
 		}),
+		systemPromptSection("env_info_simple", func(d PromptDat) string {
+			return renderEnvInfoSection(d.WorkingDir, d.IsGitRepo, d.Platform)
+		}),
+		systemPromptSection("summarize_tool_results", func(_ PromptDat) string {
+			return "# Tool Result Summaries\nWhen reporting outcomes, summarize key tool results faithfully and include only relevant details."
+		}),
 		uncachedSystemPromptSection("mcp_instructions", func(_ PromptDat) string {
 			// Runtime MCP instructions are appended per-turn in agent.go.
 			// Keep this section uncached so dynamic prompt architecture mirrors
@@ -283,12 +295,18 @@ func (p *Prompt) promptData(ctx context.Context, provider, model string, store *
 			switch s.name {
 			case "tool_guidance":
 				data.ToolGuidance = v
+			case "session_guidance":
+				data.SessionGuidanceSection = v
 			case "language":
 				data.LanguageSection = v
 			case "output_style":
 				data.OutputStyleSection = v
 			case "memory":
 				data.MemorySection = v
+			case "env_info_simple":
+				data.EnvInfoSection = v
+			case "summarize_tool_results":
+				data.SummarizeToolResultsSection = v
 			}
 			continue
 		}
@@ -297,12 +315,18 @@ func (p *Prompt) promptData(ctx context.Context, provider, model string, store *
 		switch s.name {
 		case "tool_guidance":
 			data.ToolGuidance = v
+		case "session_guidance":
+			data.SessionGuidanceSection = v
 		case "language":
 			data.LanguageSection = v
 		case "output_style":
 			data.OutputStyleSection = v
 		case "memory":
 			data.MemorySection = v
+		case "env_info_simple":
+			data.EnvInfoSection = v
+		case "summarize_tool_results":
+			data.SummarizeToolResultsSection = v
 		}
 	}
 	if isGit {
@@ -359,6 +383,34 @@ func renderToolGuidance(toolNames []string, isSubAgent bool) string {
 		lines = append(lines, "- You are a subagent: execute directly; do not recursively delegate unless explicitly needed.")
 	}
 	return strings.Join(lines, "\n")
+}
+
+func renderSessionGuidance(toolNames []string, isSubAgent bool, opts *config.Options) string {
+	lines := make([]string, 0, 8)
+	lines = append(lines, "# Session Guidance")
+	lines = append(lines, "- Adapt tool usage to the currently enabled toolset.")
+	lines = append(lines, "- If an exact tool call was denied, adjust input/tool instead of retrying unchanged.")
+	if isSubAgent {
+		lines = append(lines, "- You are operating as a subagent; avoid recursive delegation.")
+	}
+	if opts != nil && opts.DisableAutoSummarize {
+		lines = append(lines, "- Auto-summarization is disabled in this session configuration.")
+	}
+	if len(toolNames) > 0 {
+		lines = append(lines, "- Enabled tools in this session should be preferred over speculative reasoning.")
+	}
+	return strings.Join(lines, "\n")
+}
+
+func renderEnvInfoSection(workingDir string, isGitRepo bool, platform string) string {
+	git := "no"
+	if isGitRepo {
+		git = "yes"
+	}
+	return "# Environment Info\n" +
+		"Working directory: " + workingDir + "\n" +
+		"Is directory a git repo: " + git + "\n" +
+		"Platform: " + platform
 }
 
 func isGitRepo(dir string) bool {

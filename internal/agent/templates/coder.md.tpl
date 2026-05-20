@@ -95,6 +95,18 @@ IMPORTANT: Never generate or guess URLs unless clearly needed for programming an
 {{.MemorySection}}
 {{end}}
 
+{{if .SessionGuidanceSection}}
+{{.SessionGuidanceSection}}
+{{end}}
+
+{{if .EnvInfoSection}}
+{{.EnvInfoSection}}
+{{end}}
+
+{{if .SummarizeToolResultsSection}}
+{{.SummarizeToolResultsSection}}
+{{end}}
+
 {{if .MCPInstructionsSection}}
 {{.MCPInstructionsSection}}
 {{end}}

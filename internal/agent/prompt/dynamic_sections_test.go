@@ -10,7 +10,7 @@ import (
 )
 
 func TestPromptBuild_IncludesDynamicSections(t *testing.T) {
-	tmpl := "{{.DynamicBoundary}}\n{{.LanguageSection}}\n{{.OutputStyleSection}}\n{{.MemorySection}}"
+	tmpl := "{{.DynamicBoundary}}\n{{.LanguageSection}}\n{{.OutputStyleSection}}\n{{.MemorySection}}\n{{.SessionGuidanceSection}}\n{{.EnvInfoSection}}\n{{.SummarizeToolResultsSection}}"
 	p, err := NewPrompt(
 		"test",
 		tmpl,
@@ -41,5 +41,14 @@ func TestPromptBuild_IncludesDynamicSections(t *testing.T) {
 	}
 	if strings.Contains(out, "# Memory") {
 		t.Fatalf("unexpected memory section without context files: %q", out)
+	}
+	if !strings.Contains(out, "# Session Guidance") {
+		t.Fatalf("missing session guidance section: %q", out)
+	}
+	if !strings.Contains(out, "# Environment Info") {
+		t.Fatalf("missing env info section: %q", out)
+	}
+	if !strings.Contains(out, "# Tool Result Summaries") {
+		t.Fatalf("missing summarize tool results section: %q", out)
 	}
 }
