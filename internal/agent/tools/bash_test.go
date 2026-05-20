@@ -162,6 +162,14 @@ func TestBashTool_ChainedCommandsDenied(t *testing.T) {
 	require.Contains(t, resp.Content, "User denied permission")
 }
 
+func TestBashDescription_PrefersNewCommitOverAmendAfterHookFailure(t *testing.T) {
+	t.Parallel()
+	desc := bashDescription(&config.Attribution{TrailerStyle: config.TrailerStyleNone}, "test-model")
+	require.Contains(t, desc, "create a NEW commit")
+	require.Contains(t, desc, "do not amend unless the user explicitly requests amend")
+	require.Contains(t, desc, "Prefer NEW commits over amend unless user explicitly requests amend")
+}
+
 func runBashTool(t *testing.T, tool fantasy.AgentTool, ctx context.Context, params BashParams) fantasy.ToolResponse {
 	t.Helper()
 

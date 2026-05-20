@@ -81,11 +81,11 @@ When user asks to create git commit:
    EOF
    )"
 
-5. If pre-commit hook fails, retry ONCE. If fails again, hook preventing commit. If succeeds but files modified, MUST amend.
+5. If pre-commit hook fails, investigate and fix the issue, then create a NEW commit (do not amend unless the user explicitly requests amend).
 
 6. Run git status to verify.
 
-Notes: Use "git commit -am" when possible, don't stage unrelated files, NEVER update config, don't push, no -i flags, no empty commits, return empty response, when rebasing always use -m or GIT_EDITOR=true.
+Notes: Use "git commit -am" when possible, don't stage unrelated files, NEVER update config, don't push, no -i flags, no empty commits, return empty response, when rebasing always use -m or GIT_EDITOR=true. Prefer NEW commits over amend unless user explicitly requests amend.
 </git_commits>
 
 <pull_requests>
