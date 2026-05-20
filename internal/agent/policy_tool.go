@@ -99,6 +99,22 @@ func looksLikeDedicatedToolCommand(cmd string) bool {
 		return false
 	}
 	trimmed := strings.TrimSpace(strings.ToLower(cmd))
+	// Drop common shell wrappers/prefixes before command matching.
+	for {
+		changed := false
+		if strings.HasPrefix(trimmed, "command ") {
+			trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "command "))
+			changed = true
+		}
+		parts := strings.Fields(trimmed)
+		if len(parts) > 0 && strings.Contains(parts[0], "=") && !strings.HasPrefix(parts[0], "=") && !strings.HasSuffix(parts[0], "=") {
+			trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, parts[0]))
+			changed = true
+		}
+		if !changed {
+			break
+		}
+	}
 	// Mirror Claude-style "prefer dedicated tools over shell" as an active
 	// runtime guard for obviously file-search/read/edit shell patterns.
 	prefixes := []string{
