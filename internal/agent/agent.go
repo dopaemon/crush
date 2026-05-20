@@ -51,6 +51,7 @@ import (
 const (
 	DefaultSessionName    = "Untitled Session"
 	verificationAgentType = "verification"
+	autoContinueMarker    = "[[auto-continue]]"
 
 	// Constants for auto-summarization thresholds
 	largeContextWindowThreshold = 200_000
@@ -575,6 +576,38 @@ func ensureToolCallPreamble(msg *message.Message, briefMode bool) {
 		return
 	}
 	msg.AppendContent("Starting with a quick check before making changes.")
+}
+
+func isProgressOnlyContent(text string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(text))
+	if normalized == "" {
+		return false
+	}
+	progressSignals := []string{
+		"i will", "i'll", "next i", "starting", "working on", "continue working",
+		"s\u1ebd", "m\u00ecnh s\u1ebd", "ti\u1ebfp theo", "b\u1eaft \u0111\u1ea7u",
+		"\u0111ang l\u00e0m", "m\u00ecnh ti\u1ebfp t\u1ee5c",
+	}
+	evidenceSignals := []string{
+		"```", "error:", "diff", "updated files", "changed files", "ran ",
+	}
+
+	hasProgress := false
+	for _, s := range progressSignals {
+		if strings.Contains(normalized, s) {
+			hasProgress = true
+			break
+		}
+	}
+	if !hasProgress {
+		return false
+	}
+	for _, s := range evidenceSignals {
+		if strings.Contains(normalized, s) {
+			return false
+		}
+	}
+	return true
 }
 
 func buildGoalContext(goal *session.Goal) string {
@@ -1151,6 +1184,17 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 
 	queuedMessages, ok := a.messageQueue.Get(call.SessionID)
 	if !ok || len(queuedMessages) == 0 {
+		if currentAssistant != nil &&
+			!strings.Contains(call.Prompt, autoContinueMarker) &&
+			len(currentAssistant.ToolCalls()) == 0 &&
+			currentAssistant.FinishReason() == message.FinishReasonEndTurn &&
+			isProgressOnlyContent(currentAssistant.Content().Text) &&
+			(currentSession.Goal != nil || session.HasIncompleteTodos(currentSession.Todos)) {
+			autoContinue := call
+			autoContinue.Prompt = autoContinueMarker + " Continue executing the active request now. Do not send status-only text. Use tools or report a concrete blocker."
+			a.messageQueue.Set(call.SessionID, []SessionAgentCall{autoContinue})
+			return a.Run(ctx, autoContinue)
+		}
 		return result, err
 	}
 	// There are queued messages restart the loop.
