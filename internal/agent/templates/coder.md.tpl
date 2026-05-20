@@ -107,6 +107,18 @@ IMPORTANT: Never generate or guess URLs unless clearly needed for programming an
 {{.SummarizeToolResultsSection}}
 {{end}}
 
+{{if .ScratchpadSection}}
+{{.ScratchpadSection}}
+{{end}}
+
+{{if .TokenBudgetSection}}
+{{.TokenBudgetSection}}
+{{end}}
+
+{{if .BriefSection}}
+{{.BriefSection}}
+{{end}}
+
 {{if .MCPInstructionsSection}}
 {{.MCPInstructionsSection}}
 {{end}}

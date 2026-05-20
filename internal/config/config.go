@@ -282,6 +282,9 @@ type Options struct {
 	DisabledSkills            []string     `json:"disabled_skills,omitempty" jsonschema:"description=List of skill names to disable and hide from the agent,example=crush-config"`
 	Language                  string       `json:"language,omitempty" jsonschema:"description=Preferred response language for the agent,example=Vietnamese,example=English"`
 	OutputStylePrompt         string       `json:"output_style_prompt,omitempty" jsonschema:"description=Additional output-style instructions appended to the system prompt"`
+	ScratchpadDirectory       string       `json:"scratchpad_directory,omitempty" jsonschema:"description=Session scratchpad directory for temporary files used by the agent"`
+	TokenBudgetTarget         string       `json:"token_budget_target,omitempty" jsonschema:"description=Optional token budget target hint such as +500k or 2M"`
+	BriefMode                 *bool        `json:"brief_mode,omitempty" jsonschema:"description=Enable brief response guidance section,default=false"`
 }
 
 type MCPs map[string]MCPConfig

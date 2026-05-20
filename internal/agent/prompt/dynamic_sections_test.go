@@ -10,7 +10,7 @@ import (
 )
 
 func TestPromptBuild_IncludesDynamicSections(t *testing.T) {
-	tmpl := "{{.DynamicBoundary}}\n{{.LanguageSection}}\n{{.OutputStyleSection}}\n{{.MemorySection}}\n{{.SessionGuidanceSection}}\n{{.EnvInfoSection}}\n{{.SummarizeToolResultsSection}}"
+	tmpl := "{{.DynamicBoundary}}\n{{.LanguageSection}}\n{{.OutputStyleSection}}\n{{.MemorySection}}\n{{.SessionGuidanceSection}}\n{{.EnvInfoSection}}\n{{.SummarizeToolResultsSection}}\n{{.ScratchpadSection}}\n{{.TokenBudgetSection}}\n{{.BriefSection}}"
 	p, err := NewPrompt(
 		"test",
 		tmpl,
@@ -21,11 +21,15 @@ func TestPromptBuild_IncludesDynamicSections(t *testing.T) {
 		t.Fatalf("new prompt: %v", err)
 	}
 
+	brief := true
 	store := config.NewTestStore(&config.Config{
 		Options: &config.Options{
-				Language:          "Vietnamese",
-				OutputStylePrompt: "Keep responses terse.",
-				ContextPaths:      []string{},
+			Language:          "Vietnamese",
+			OutputStylePrompt: "Keep responses terse.",
+			ContextPaths:      []string{},
+			ScratchpadDirectory: "/tmp/crush-scratch/session-1",
+			TokenBudgetTarget: "500k",
+			BriefMode: &brief,
 		},
 	})
 
@@ -50,5 +54,14 @@ func TestPromptBuild_IncludesDynamicSections(t *testing.T) {
 	}
 	if !strings.Contains(out, "# Tool Result Summaries") {
 		t.Fatalf("missing summarize tool results section: %q", out)
+	}
+	if !strings.Contains(out, "# Scratchpad") {
+		t.Fatalf("missing scratchpad section: %q", out)
+	}
+	if !strings.Contains(out, "# Token Budget") {
+		t.Fatalf("missing token budget section: %q", out)
+	}
+	if !strings.Contains(out, "# Brief Mode") {
+		t.Fatalf("missing brief section: %q", out)
 	}
 }

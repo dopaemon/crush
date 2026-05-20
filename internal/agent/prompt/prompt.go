@@ -49,6 +49,9 @@ type PromptDat struct {
 	SessionGuidanceSection string
 	EnvInfoSection string
 	SummarizeToolResultsSection string
+	ScratchpadSection string
+	TokenBudgetSection string
+	BriefSection string
 	MCPInstructionsSection string
 	DynamicBoundary string
 }
@@ -277,6 +280,15 @@ func (p *Prompt) promptData(ctx context.Context, provider, model string, store *
 		systemPromptSection("summarize_tool_results", func(_ PromptDat) string {
 			return "# Tool Result Summaries\nWhen reporting outcomes, summarize key tool results faithfully and include only relevant details."
 		}),
+		systemPromptSection("scratchpad", func(d PromptDat) string {
+			return renderScratchpadSection(d.Config.Options)
+		}),
+		systemPromptSection("token_budget", func(d PromptDat) string {
+			return renderTokenBudgetSection(d.Config.Options)
+		}),
+		systemPromptSection("brief", func(d PromptDat) string {
+			return renderBriefSection(d.Config.Options)
+		}),
 		uncachedSystemPromptSection("mcp_instructions", func(_ PromptDat) string {
 			// Runtime MCP instructions are appended per-turn in agent.go.
 			// Keep this section uncached so dynamic prompt architecture mirrors
@@ -307,6 +319,12 @@ func (p *Prompt) promptData(ctx context.Context, provider, model string, store *
 				data.EnvInfoSection = v
 			case "summarize_tool_results":
 				data.SummarizeToolResultsSection = v
+			case "scratchpad":
+				data.ScratchpadSection = v
+			case "token_budget":
+				data.TokenBudgetSection = v
+			case "brief":
+				data.BriefSection = v
 			}
 			continue
 		}
@@ -327,6 +345,12 @@ func (p *Prompt) promptData(ctx context.Context, provider, model string, store *
 			data.EnvInfoSection = v
 		case "summarize_tool_results":
 			data.SummarizeToolResultsSection = v
+		case "scratchpad":
+			data.ScratchpadSection = v
+		case "token_budget":
+			data.TokenBudgetSection = v
+		case "brief":
+			data.BriefSection = v
 		}
 	}
 	if isGit {
@@ -411,6 +435,29 @@ func renderEnvInfoSection(workingDir string, isGitRepo bool, platform string) st
 		"Working directory: " + workingDir + "\n" +
 		"Is directory a git repo: " + git + "\n" +
 		"Platform: " + platform
+}
+
+func renderScratchpadSection(opts *config.Options) string {
+	if opts == nil || strings.TrimSpace(opts.ScratchpadDirectory) == "" {
+		return ""
+	}
+	p := strings.TrimSpace(opts.ScratchpadDirectory)
+	return "# Scratchpad\nUse this scratchpad directory for temporary files instead of `/tmp`:\n`" + p + "`"
+}
+
+func renderTokenBudgetSection(opts *config.Options) string {
+	if opts == nil || strings.TrimSpace(opts.TokenBudgetTarget) == "" {
+		return ""
+	}
+	target := strings.TrimSpace(opts.TokenBudgetTarget)
+	return "# Token Budget\nTarget budget is `" + target + "`. Continue working productively until near this target unless the user redirects."
+}
+
+func renderBriefSection(opts *config.Options) string {
+	if opts == nil || opts.BriefMode == nil || !*opts.BriefMode {
+		return ""
+	}
+	return "# Brief Mode\nKeep user-facing text brief and high-level. Report decisions and outcomes without verbose narration."
 }
 
 func isGitRepo(dir string) bool {

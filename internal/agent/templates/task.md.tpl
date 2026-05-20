@@ -60,6 +60,18 @@ You are a Crush task agent. Execute the user's request directly with available t
 {{.SummarizeToolResultsSection}}
 {{end}}
 
+{{if .ScratchpadSection}}
+{{.ScratchpadSection}}
+{{end}}
+
+{{if .TokenBudgetSection}}
+{{.TokenBudgetSection}}
+{{end}}
+
+{{if .BriefSection}}
+{{.BriefSection}}
+{{end}}
+
 {{if .MCPInstructionsSection}}
 {{.MCPInstructionsSection}}
 {{end}}
