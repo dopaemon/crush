@@ -469,13 +469,16 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 	// Copy mutable fields under lock to avoid races with SetTools/SetModels.
 	agentTools := a.tools.Copy()
 	largeModel := a.largeModel.Get()
-	systemPrompt := composeSystemPrompt(a.staticSystemPrompt.Get(), a.dynamicSystemPrompt.Get())
-	if systemPrompt == "" {
-		systemPrompt = a.systemPrompt.Get()
-	}
-	staticPrompt, dynamicPrompt := agentprompt.SplitByDynamicBoundary(systemPrompt)
+	staticPrompt := a.staticSystemPrompt.Get()
+	dynamicPrompt := a.dynamicSystemPrompt.Get()
+	// Legacy fallback: sessions initialized before boundary-aware setup may
+	// only have systemPrompt populated.
 	if staticPrompt == "" && dynamicPrompt == "" {
-		staticPrompt = systemPrompt
+		legacy := a.systemPrompt.Get()
+		staticPrompt, dynamicPrompt = agentprompt.SplitByDynamicBoundary(legacy)
+		if staticPrompt == "" && dynamicPrompt == "" {
+			staticPrompt = legacy
+		}
 	}
 	promptPrefix := a.systemPromptPrefix.Get()
 	var instructions strings.Builder
@@ -517,7 +520,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 	if s := instructions.String(); s != "" {
 		dynamicPrompt = appendDynamicSection(dynamicPrompt, "<mcp-instructions>\n"+s+"\n</mcp-instructions>")
 	}
-	systemPrompt = composeSystemPrompt(staticPrompt, dynamicPrompt)
+	systemPrompt := composeSystemPrompt(staticPrompt, dynamicPrompt)
 	if len(agentTools) > 0 {
 		// Add Anthropic caching to the last tool.
 		agentTools[len(agentTools)-1].SetProviderOptions(a.getCacheControlOptions())
