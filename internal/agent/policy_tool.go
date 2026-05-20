@@ -11,6 +11,17 @@ import (
 	"github.com/charmbracelet/crush/internal/message"
 )
 
+var riskyBashPatterns = []string{
+	"rm -rf",
+	"rm -fr",
+	"git reset --hard",
+	"git checkout --",
+	"git clean -fd",
+	"git clean -xdf",
+	"git push --force",
+	"git push -f",
+}
+
 func toolFilePath(toolName, input string) string {
 	var payload map[string]any
 	if err := json.Unmarshal([]byte(input), &payload); err != nil {
@@ -40,6 +51,30 @@ func hasRecentViewForPath(msgs []message.Message, path string) bool {
 			if toolFilePath(tc.Name, tc.Input) == path {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+func toolCommand(toolName, input string) string {
+	if toolName != tools.BashToolName {
+		return ""
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(input), &payload); err != nil {
+		return ""
+	}
+	cmd, _ := payload["command"].(string)
+	return strings.TrimSpace(strings.ToLower(cmd))
+}
+
+func isRiskyBashCommand(cmd string) bool {
+	if cmd == "" {
+		return false
+	}
+	for _, pattern := range riskyBashPatterns {
+		if strings.Contains(cmd, pattern) {
+			return true
 		}
 	}
 	return false
@@ -159,6 +194,10 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 					if _, statErr := os.Stat(path); statErr == nil && !hasRecentViewForPath(msgs, path) {
 						return fantasy.NewTextErrorResponse("Safe-overwrite policy: view existing file before write overwrite."), nil
 					}
+				}
+			case tools.BashToolName:
+				if isRiskyBashCommand(toolCommand(call.Name, call.Input)) {
+					return fantasy.NewTextErrorResponse("Risky shell action blocked pending explicit user confirmation. Ask the user to confirm before running destructive commands."), nil
 				}
 			}
 		}
