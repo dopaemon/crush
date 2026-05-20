@@ -1891,32 +1891,24 @@ func (m *UI) handleKeyPressMsg(msg tea.KeyPressMsg) tea.Cmd {
 					break
 				}
 
+				// Otherwise, send the message
+				m.textarea.Reset()
+				if cmd := m.handleTextareaHeightChange(prevHeight); cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+
 				value = strings.TrimSpace(value)
 				if value == "exit" || value == "quit" {
-					m.textarea.Reset()
-					if cmd := m.handleTextareaHeightChange(prevHeight); cmd != nil {
-						cmds = append(cmds, cmd)
-					}
 					return m.openQuitDialog()
 				}
 
 				attachments := m.attachments.List()
 				m.attachments.Reset()
 				if len(value) == 0 && !message.ContainsTextAttachment(attachments) {
-					m.textarea.Reset()
-					if cmd := m.handleTextareaHeightChange(prevHeight); cmd != nil {
-						cmds = append(cmds, cmd)
-					}
 					return nil
 				}
 				if handled, cmd := m.handleGoalCommand(value); handled {
 					return tea.Batch(cmd, m.loadPromptHistory())
-				}
-
-				// Otherwise, send the message
-				m.textarea.Reset()
-				if cmd := m.handleTextareaHeightChange(prevHeight); cmd != nil {
-					cmds = append(cmds, cmd)
 				}
 
 				m.randomizePlaceholders()
