@@ -27,3 +27,10 @@ func TestWebFetchDescription_IncludesRedirectAndLargePageGuidance(t *testing.T) 
 	require.Contains(t, desc, "rerun fetch with the final redirected URL")
 }
 
+func TestViewDescription_IncludesReadSpecificGuidance(t *testing.T) {
+	t.Parallel()
+	desc := viewDescription()
+	require.Contains(t, desc, "Supports offset and line limit for targeted reads")
+	require.Contains(t, desc, "Can read notebook files (`.ipynb`)")
+	require.Contains(t, desc, "for directories use `ls`")
+}
