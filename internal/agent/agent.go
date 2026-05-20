@@ -32,6 +32,7 @@ import (
 	"charm.land/fantasy/providers/openrouter"
 	"charm.land/fantasy/providers/vercel"
 	"charm.land/lipgloss/v2"
+	agentprompt "github.com/charmbracelet/crush/internal/agent/prompt"
 	"github.com/charmbracelet/crush/internal/agent/hyper"
 	"github.com/charmbracelet/crush/internal/agent/notify"
 	"github.com/charmbracelet/crush/internal/agent/tools"
@@ -111,6 +112,8 @@ type sessionAgent struct {
 	smallModel         *csync.Value[Model]
 	systemPromptPrefix *csync.Value[string]
 	systemPrompt       *csync.Value[string]
+	staticSystemPrompt *csync.Value[string]
+	dynamicSystemPrompt *csync.Value[string]
 	tools              *csync.Slice[fantasy.AgentTool]
 
 	isSubAgent           bool
@@ -405,6 +408,8 @@ func NewSessionAgent(
 		smallModel:           csync.NewValue(opts.SmallModel),
 		systemPromptPrefix:   csync.NewValue(opts.SystemPromptPrefix),
 		systemPrompt:         csync.NewValue(opts.SystemPrompt),
+		staticSystemPrompt:   csync.NewValue(""),
+		dynamicSystemPrompt:  csync.NewValue(""),
 		isSubAgent:           opts.IsSubAgent,
 		sessions:             opts.Sessions,
 		messages:             opts.Messages,
@@ -1524,6 +1529,9 @@ func (a *sessionAgent) SetTools(tools []fantasy.AgentTool) {
 
 func (a *sessionAgent) SetSystemPrompt(systemPrompt string) {
 	a.systemPrompt.Set(systemPrompt)
+	staticPart, dynamicPart := agentprompt.SplitByDynamicBoundary(systemPrompt)
+	a.staticSystemPrompt.Set(staticPart)
+	a.dynamicSystemPrompt.Set(dynamicPart)
 }
 
 func (a *sessionAgent) Model() Model {
