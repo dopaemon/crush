@@ -55,7 +55,10 @@ type (
 	ActionToggleNotifications         struct{}
 	ActionToggleTransparentBackground struct{}
 	ActionInitializeProject           struct{}
-	ActionSummarize                   struct {
+	ActionSetInput                    struct {
+		Value string
+	}
+	ActionSummarize struct {
 		SessionID string
 	}
 	// ActionSelectReasoningEffort is a message indicating a reasoning effort

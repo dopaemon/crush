@@ -1393,6 +1393,12 @@ func (m *UI) handleDialogMsg(msg tea.Msg) tea.Cmd {
 	case dialog.ActionToggleHelp:
 		m.status.ToggleHelp()
 		m.dialog.CloseDialog(dialog.CommandsID)
+	case dialog.ActionSetInput:
+		m.textarea.SetValue(msg.Value)
+		m.dialog.CloseDialog(dialog.CommandsID)
+		if m.focus == uiFocusEditor {
+			cmds = append(cmds, m.textarea.Focus())
+		}
 	case dialog.ActionExternalEditor:
 		if m.isAgentBusy() {
 			cmds = append(cmds, util.ReportWarn("Agent is working, please wait..."))
