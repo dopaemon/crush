@@ -1078,7 +1078,11 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 			url := hyper.BaseURL()
 			link := linkStyle.Hyperlink(url, "id=hyper").Render(url)
 			currentAssistant.AddFinish(message.FinishReasonError, "No credits", "You're out of credits. Add more at "+link)
+			a.setGoalStatus(ctx, call.SessionID, session.GoalStatusUsageLimited)
 		} else if errors.As(err, &providerErr) {
+			if providerErr.StatusCode == http.StatusTooManyRequests || providerErr.StatusCode == http.StatusPaymentRequired {
+				a.setGoalStatus(ctx, call.SessionID, session.GoalStatusUsageLimited)
+			}
 			if providerErr.Message == "The requested model is not supported." {
 				url := "https://github.com/settings/copilot/features"
 				link := linkStyle.Hyperlink(url, "id=copilot").Render(url)
@@ -1091,6 +1095,10 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 				currentAssistant.AddFinish(message.FinishReasonError, cmp.Or(stringext.Capitalize(providerErr.Title), defaultTitle), providerErr.Message)
 			}
 		} else if errors.As(err, &fantasyErr) {
+			fantasyErrText := strings.ToLower(strings.TrimSpace(fantasyErr.Title + " " + fantasyErr.Message))
+			if strings.Contains(fantasyErrText, "rate limit") || strings.Contains(fantasyErrText, "quota") || strings.Contains(fantasyErrText, "usage limit") {
+				a.setGoalStatus(ctx, call.SessionID, session.GoalStatusUsageLimited)
+			}
 			currentAssistant.AddFinish(message.FinishReasonError, cmp.Or(stringext.Capitalize(fantasyErr.Title), defaultTitle), fantasyErr.Message)
 		} else {
 			currentAssistant.AddFinish(message.FinishReasonError, defaultTitle, err.Error())
@@ -1681,6 +1689,16 @@ func (a *sessionAgent) updateSessionGoalUsage(sess *session.Session, usage fanta
 	if sess.Goal.TokenBudget != nil && sess.Goal.TokensUsed >= *sess.Goal.TokenBudget {
 		sess.Goal.Status = session.GoalStatusBudgetLimited
 	}
+}
+
+func (a *sessionAgent) setGoalStatus(ctx context.Context, sessionID string, status session.GoalStatus) {
+	sess, err := a.sessions.Get(ctx, sessionID)
+	if err != nil || sess.Goal == nil {
+		return
+	}
+	sess.Goal.Status = status
+	sess.Goal.UpdatedAt = time.Now().Unix()
+	_, _ = a.sessions.Save(ctx, sess)
 }
 
 func (a *sessionAgent) Cancel(sessionID string) {
