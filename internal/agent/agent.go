@@ -152,7 +152,27 @@ func lastDeniedToolFromHistory(msgs []message.Message) string {
 	return ""
 }
 
-func buildRuntimeSystemGuidance(agentTools []fantasy.AgentTool, isSubAgent bool, lastDeniedTool string) string {
+func hasNonTrivialRecentImplementation(msgs []message.Message) bool {
+	editLikeCount := 0
+	for i := len(msgs) - 1; i >= 0; i-- {
+		for _, tc := range msgs[i].ToolCalls() {
+			switch tc.Name {
+			case tools.EditToolName, tools.MultiEditToolName, tools.WriteToolName:
+				editLikeCount++
+				if editLikeCount >= 3 {
+					return true
+				}
+			}
+		}
+		// Bound the scan to recent history to avoid stale over-triggering.
+		if len(msgs)-i > 40 {
+			break
+		}
+	}
+	return false
+}
+
+func buildRuntimeSystemGuidance(agentTools []fantasy.AgentTool, isSubAgent bool, lastDeniedTool string, needsVerificationContract bool) string {
 	toolset := map[string]struct{}{}
 	for _, t := range agentTools {
 		toolset[t.Info().Name] = struct{}{}
@@ -197,6 +217,9 @@ func buildRuntimeSystemGuidance(agentTools []fantasy.AgentTool, isSubAgent bool,
 		b.WriteString("- The user recently denied permission for tool `")
 		b.WriteString(lastDeniedTool)
 		b.WriteString("`; avoid retrying it unchanged and choose a safer alternative or ask for clarification.\n")
+	}
+	if needsVerificationContract {
+		b.WriteString("- Non-trivial recent implementation detected. Before claiming completion, run independent verification commands and report exact outcomes.\n")
 	}
 	b.WriteString("- If a tool call is denied, do not retry the exact same call unchanged.\n")
 	b.WriteString("- Report verification outcomes faithfully; do not claim checks passed without evidence.\n")
@@ -286,7 +309,12 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 	if err != nil {
 		return nil, fmt.Errorf("failed to get session messages: %w", err)
 	}
-	systemPrompt += "\n\n" + buildRuntimeSystemGuidance(agentTools, a.isSubAgent, lastDeniedToolFromHistory(msgs))
+	systemPrompt += "\n\n" + buildRuntimeSystemGuidance(
+		agentTools,
+		a.isSubAgent,
+		lastDeniedToolFromHistory(msgs),
+		hasNonTrivialRecentImplementation(msgs),
+	)
 
 	var wg sync.WaitGroup
 	// Generate title if first message.
