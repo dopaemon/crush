@@ -420,9 +420,20 @@ func renderToolGuidance(toolNames []string, isSubAgent bool) string {
 
 func renderSessionGuidance(toolNames []string, isSubAgent bool, opts *config.Options) string {
 	lines := make([]string, 0, 8)
+	toolset := make(map[string]struct{}, len(toolNames))
+	for _, n := range toolNames {
+		toolset[n] = struct{}{}
+	}
+	hasTool := func(name string) bool {
+		_, ok := toolset[name]
+		return ok
+	}
 	lines = append(lines, "# Session Guidance")
 	lines = append(lines, "- Adapt tool usage to the currently enabled toolset.")
 	lines = append(lines, "- If an exact tool call was denied, adjust input/tool instead of retrying unchanged.")
+	if hasTool("ask_user_question") {
+		lines = append(lines, "- If a deny reason remains unclear after inspection, use `ask_user_question` to ask a focused clarification.")
+	}
 	lines = append(lines, "- If the user must run an interactive shell login themselves, provide the exact `! <command>` to run in-session.")
 	lines = append(lines, "- Do not use a trailing colon right before a tool call preamble sentence.")
 	if isSubAgent {
