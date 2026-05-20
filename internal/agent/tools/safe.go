@@ -87,7 +87,7 @@ var dedicatedToolPreferredCommands = map[string]string{
 
 func dedicatedToolHintForCommand(cmd string) string {
 	trimmed := strings.TrimSpace(strings.ToLower(cmd))
-	if trimmed == "" || containsCommandChaining(trimmed) {
+	if trimmed == "" {
 		return ""
 	}
 	parts := strings.Fields(trimmed)

@@ -61,7 +61,7 @@ func TestDedicatedToolHintForCommand(t *testing.T) {
 		{name: "find blocked", cmd: "find . -name '*.go'", wantHint: true, wantMatch: "glob"},
 		{name: "sed blocked", cmd: "sed -n '1,10p' file", wantHint: true, wantMatch: "edit"},
 		{name: "ls allowed", cmd: "ls -la", wantHint: false},
-		{name: "chained ignored", cmd: "cat a.txt | wc -l", wantHint: false},
+		{name: "chained still blocked by first command", cmd: "cat a.txt | wc -l", wantHint: true, wantMatch: "view"},
 		{name: "empty", cmd: "   ", wantHint: false},
 	}
 
