@@ -431,6 +431,8 @@ func renderSessionGuidance(toolNames []string, isSubAgent bool, opts *config.Opt
 	lines = append(lines, "# Session Guidance")
 	lines = append(lines, "- Adapt tool usage to the currently enabled toolset.")
 	lines = append(lines, "- If an exact tool call was denied, adjust input/tool instead of retrying unchanged.")
+	lines = append(lines, "- Avoid repeated acknowledgement/progress-only responses; if actionable work exists, execute the next tool call.")
+	lines = append(lines, "- If blocked, state the exact blocker and minimum required user action once instead of repeating status updates.")
 	if hasTool("ask_user_question") {
 		lines = append(lines, "- If a deny reason remains unclear after inspection, use `ask_user_question` to ask a focused clarification.")
 	}

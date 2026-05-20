@@ -476,6 +476,7 @@ func buildRuntimeSystemGuidance(
 	}
 	if has(tools.TodosToolName) {
 		b.WriteString("- Keep todos updated while working on multi-step tasks.\n")
+		b.WriteString("- Do not let todo/progress updates replace execution; after updating task state, immediately continue with concrete tool actions.\n")
 	}
 	if isSubAgent {
 		b.WriteString("- You are a subagent: execute directly and avoid recursive delegation unless explicitly required.\n")
@@ -546,6 +547,8 @@ func buildRuntimeSystemGuidance(
 			b.WriteString("- In brief mode on first turn, keep that acknowledgement to one short sentence and then proceed directly.\n")
 		}
 	}
+	b.WriteString("- Avoid acknowledgement-only or status-only loops. If actionable work exists, perform the next tool call now.\n")
+	b.WriteString("- If execution is blocked, report the specific blocker and required user action once, then wait.\n")
 	if strings.TrimSpace(tokenBudgetTarget) != "" {
 		b.WriteString("- Token budget target is active (`")
 		b.WriteString(strings.TrimSpace(tokenBudgetTarget))
