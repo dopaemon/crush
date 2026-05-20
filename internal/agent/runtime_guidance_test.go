@@ -67,7 +67,7 @@ func TestBuildRuntimeSystemGuidance_IncludesDeniedToolHint(t *testing.T) {
 		&mockAgentTool{name: tools.EditToolName},
 	}
 
-	guidance := buildRuntimeSystemGuidance(agentTools, false, tools.EditToolName, false, false, false, false, false)
+	guidance := buildRuntimeSystemGuidance(agentTools, false, tools.EditToolName, false, false, false, false, false, false)
 	require.True(t, strings.Contains(guidance, "recently denied permission"))
 	require.True(t, strings.Contains(guidance, tools.EditToolName))
 }
@@ -113,7 +113,7 @@ func TestBuildRuntimeSystemGuidance_NonInteractive(t *testing.T) {
 	agentTools := []fantasy.AgentTool{
 		&mockAgentTool{name: tools.ViewToolName},
 	}
-	guidance := buildRuntimeSystemGuidance(agentTools, false, "", false, false, false, false, true)
+	guidance := buildRuntimeSystemGuidance(agentTools, false, "", false, false, false, false, false, true)
 	require.True(t, strings.Contains(guidance, "non-interactive run"))
 }
 
@@ -145,4 +145,19 @@ func TestHasRecentAuthBlock(t *testing.T) {
 		},
 	}
 	require.True(t, hasRecentAuthBlock(msgs))
+}
+
+func TestHasRecentExactMatchEditFailure(t *testing.T) {
+	msgs := []message.Message{
+		{
+			Parts: []message.ContentPart{
+				message.ToolResult{
+					Name:    tools.EditToolName,
+					Content: "Edit failed: old_string not found in file",
+					IsError: true,
+				},
+			},
+		},
+	}
+	require.True(t, hasRecentExactMatchEditFailure(msgs))
 }

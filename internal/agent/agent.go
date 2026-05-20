@@ -228,6 +228,24 @@ func hasRecentAuthBlock(msgs []message.Message) bool {
 	return false
 }
 
+func hasRecentExactMatchEditFailure(msgs []message.Message) bool {
+	for i := len(msgs) - 1; i >= 0; i-- {
+		for _, tr := range msgs[i].ToolResults() {
+			content := strings.ToLower(tr.Content)
+			if strings.Contains(content, "old_string") && strings.Contains(content, "not found") {
+				return true
+			}
+			if strings.Contains(content, "exact") && strings.Contains(content, "match") && strings.Contains(content, "failed") {
+				return true
+			}
+		}
+		if len(msgs)-i > 30 {
+			break
+		}
+	}
+	return false
+}
+
 func buildRuntimeSystemGuidance(
 	agentTools []fantasy.AgentTool,
 	isSubAgent bool,
@@ -236,6 +254,7 @@ func buildRuntimeSystemGuidance(
 	hasRecentFailedChecks bool,
 	hasRecentHookBlockedCall bool,
 	hasRecentAuthBlockedCall bool,
+	hasRecentExactMatchFailure bool,
 	nonInteractive bool,
 ) string {
 	toolset := map[string]struct{}{}
@@ -294,6 +313,9 @@ func buildRuntimeSystemGuidance(
 	}
 	if hasRecentAuthBlockedCall {
 		b.WriteString("- Recent auth/login block detected. Prefer giving the user an exact interactive login command to run, then continue once credentials are available.\n")
+	}
+	if hasRecentExactMatchFailure {
+		b.WriteString("- Recent exact-match edit failure detected. Re-read the target file and retry with larger exact context (including indentation/whitespace).\n")
 	}
 	if nonInteractive {
 		b.WriteString("- This is a non-interactive run: avoid asking follow-up questions unless absolutely required to unblock execution.\n")
@@ -394,6 +416,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		hasRecentVerificationFailure(msgs),
 		hasRecentHookBlock(msgs),
 		hasRecentAuthBlock(msgs),
+		hasRecentExactMatchEditFailure(msgs),
 		call.NonInteractive,
 	)
 
