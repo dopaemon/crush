@@ -923,6 +923,8 @@ func (m *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	m.status.SetGoalActive(m.session != nil && m.session.Goal != nil)
+
 	// This logic gets triggered on any message type, but should it?
 	switch m.focus {
 	case uiFocusMain:

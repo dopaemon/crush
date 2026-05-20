@@ -1,6 +1,7 @@
 package model
 
 import (
+	"image"
 	"strings"
 	"time"
 
@@ -23,6 +24,7 @@ type Status struct {
 	help     help.Model
 	helpKm   help.KeyMap
 	msg      util.InfoMsg
+	goalOn   bool
 }
 
 // NewStatus creates a new status bar and help model.
@@ -43,6 +45,11 @@ func (s *Status) SetInfoMsg(msg util.InfoMsg) {
 // ClearInfoMsg clears the status info message.
 func (s *Status) ClearInfoMsg() {
 	s.msg = util.InfoMsg{}
+}
+
+// SetGoalActive toggles the goal-mode indicator.
+func (s *Status) SetGoalActive(active bool) {
+	s.goalOn = active
 }
 
 // SetWidth sets the width of the status bar and help view.
@@ -112,6 +119,12 @@ func (s *Status) Draw(scr uv.Screen, area uv.Rectangle) {
 
 	// Draw the info message over the help view
 	uv.NewStyledString(ind+info).Draw(scr, area)
+
+	if s.goalOn {
+		badge := s.com.Styles.Status.InfoMessage.Bold(true).Render(" GOAL ")
+		x := max(0, area.Dx()-lipgloss.Width(badge))
+		uv.NewStyledString(badge).Draw(scr, area.Add(image.Pt(x, 0)))
+	}
 }
 
 // clearInfoMsgCmd returns a command that clears the info message after the
