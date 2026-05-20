@@ -418,6 +418,7 @@ func renderSessionGuidance(toolNames []string, isSubAgent bool, opts *config.Opt
 	lines = append(lines, "- Do not use a trailing colon right before a tool call preamble sentence.")
 	if isSubAgent {
 		lines = append(lines, "- You are operating as a subagent; avoid recursive delegation.")
+		lines = append(lines, "- Subagent shell cwd is not guaranteed between calls; use absolute paths and include explicit directory context per command.")
 	}
 	if opts != nil && opts.DisableAutoSummarize {
 		lines = append(lines, "- Auto-summarization is disabled in this session configuration.")
@@ -444,7 +445,7 @@ func renderScratchpadSection(opts *config.Options) string {
 		return ""
 	}
 	p := strings.TrimSpace(opts.ScratchpadDirectory)
-	return "# Scratchpad Directory\nIMPORTANT: Always use this scratchpad directory for temporary files instead of `/tmp` or other system temp directories:\n`" + p + "`\nThe scratchpad directory is session-specific, isolated from the user's project, and can be used freely without permission prompts."
+	return "# Scratchpad Directory\n\nIMPORTANT: Always use this scratchpad directory for temporary files instead of `/tmp` or other system temp directories:\n`" + p + "`\n\nUse this directory for ALL temporary file needs:\n- Storing intermediate results or data during multi-step tasks\n- Writing temporary scripts or configuration files\n- Saving outputs that don't belong in the user's project\n- Creating working files during analysis or processing\n- Any file that would otherwise go to `/tmp`\n\nOnly use `/tmp` if the user explicitly requests it.\n\nThe scratchpad directory is session-specific, isolated from the user's project, and can be used freely without permission prompts."
 }
 
 func renderTokenBudgetSection(opts *config.Options) string {
