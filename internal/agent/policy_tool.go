@@ -83,6 +83,15 @@ func isRiskyBashCommand(cmd string) bool {
 	return false
 }
 
+func isVerificationAgentCall(input string) bool {
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(input), &payload); err != nil {
+		return false
+	}
+	raw, _ := payload["subagent_type"].(string)
+	return strings.EqualFold(strings.TrimSpace(raw), verificationAgentType)
+}
+
 func normalizeJSONInput(input string) string {
 	var v any
 	if err := json.Unmarshal([]byte(input), &v); err != nil {
@@ -182,6 +191,12 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 				if recentFailedIdenticalCalls == 1 {
 					return fantasy.NewTextErrorResponse("Previous identical call was denied or failed. Use a different approach or clarify intent before retrying."), nil
 				}
+			}
+			if call.Name == AgentToolName &&
+				hasNonTrivialRecentImplementation(msgs) &&
+				!hasRecentVerificationAgentRun(msgs) &&
+				!isVerificationAgentCall(call.Input) {
+				return fantasy.NewTextErrorResponse("Verification contract active: run `agent` with `subagent_type=\"verification\"` before other delegation."), nil
 			}
 			switch call.Name {
 			case tools.EditToolName, tools.MultiEditToolName:

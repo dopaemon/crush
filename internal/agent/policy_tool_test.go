@@ -513,3 +513,53 @@ func TestDenyRetryPolicyTool_BlocksRiskyBashGitCommitAmend(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, resp.Content, "Risky shell action blocked")
 }
+
+func TestDenyRetryPolicyTool_BlocksNonVerificationAgentCallWhenVerifierRequired(t *testing.T) {
+	inner := &mockAgentTool{name: AgentToolName}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{
+				{
+					Parts: []message.ContentPart{
+						message.ToolCall{Name: tools.EditToolName},
+						message.ToolCall{Name: tools.MultiEditToolName},
+						message.ToolCall{Name: tools.WriteToolName},
+					},
+				},
+			}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+		Name:  AgentToolName,
+		Input: `{"prompt":"explore codebase"}`,
+	})
+	require.NoError(t, err)
+	require.Contains(t, resp.Content, "Verification contract active")
+}
+
+func TestDenyRetryPolicyTool_AllowsVerificationAgentCallWhenVerifierRequired(t *testing.T) {
+	inner := &mockAgentTool{name: AgentToolName}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{
+				{
+					Parts: []message.ContentPart{
+						message.ToolCall{Name: tools.EditToolName},
+						message.ToolCall{Name: tools.MultiEditToolName},
+						message.ToolCall{Name: tools.WriteToolName},
+					},
+				},
+			}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+		Name:  AgentToolName,
+		Input: `{"subagent_type":"verification","prompt":"verify changes"}`,
+	})
+	require.NoError(t, err)
+	require.Contains(t, resp.Content, "ok")
+}
