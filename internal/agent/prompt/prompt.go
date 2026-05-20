@@ -444,7 +444,7 @@ func renderScratchpadSection(opts *config.Options) string {
 		return ""
 	}
 	p := strings.TrimSpace(opts.ScratchpadDirectory)
-	return "# Scratchpad\nUse this scratchpad directory for temporary files instead of `/tmp`:\n`" + p + "`"
+	return "# Scratchpad Directory\nIMPORTANT: Always use this scratchpad directory for temporary files instead of `/tmp` or other system temp directories:\n`" + p + "`\nThe scratchpad directory is session-specific, isolated from the user's project, and can be used freely without permission prompts."
 }
 
 func renderTokenBudgetSection(opts *config.Options) string {
