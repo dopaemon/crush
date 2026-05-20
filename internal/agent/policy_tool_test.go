@@ -543,6 +543,7 @@ func TestDenyRetryPolicyTool_BlocksBashWhenDedicatedToolShouldBeUsed_Variants(t 
 		"command sed -n '1,20p' /tmp/a.txt",
 		"env FOO=1 grep -RIn foo .",
 		"command env FOO=1 grep -RIn foo .",
+		"env -i FOO=1 grep -RIn foo .",
 	}
 	for _, cmd := range cases {
 		t.Run(cmd, func(t *testing.T) {

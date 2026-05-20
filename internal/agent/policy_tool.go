@@ -108,6 +108,13 @@ func looksLikeDedicatedToolCommand(cmd string) bool {
 		}
 		if strings.HasPrefix(trimmed, "env ") {
 			trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "env "))
+			parts := strings.Fields(trimmed)
+			// Skip common `env` options (e.g. `env -i VAR=1 cmd`) before
+			// assignment stripping + command detection.
+			for len(parts) > 0 && strings.HasPrefix(parts[0], "-") {
+				parts = parts[1:]
+			}
+			trimmed = strings.Join(parts, " ")
 			changed = true
 		}
 		parts := strings.Fields(trimmed)
