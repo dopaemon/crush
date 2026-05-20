@@ -3,7 +3,9 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"charm.land/fantasy"
@@ -154,6 +156,18 @@ func sameToolInput(a, b string) bool {
 	return normalizeJSONInput(a) == normalizeJSONInput(b)
 }
 
+func maxStructuredOutputRetries() int {
+	raw := strings.TrimSpace(os.Getenv("MAX_STRUCTURED_OUTPUT_RETRIES"))
+	if raw == "" {
+		return 5
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n <= 0 {
+		return 5
+	}
+	return n
+}
+
 func looksLikePromptInjection(content string) bool {
 	c := strings.ToLower(content)
 	return strings.Contains(c, "ignore previous instructions") ||
@@ -236,6 +250,20 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 				}
 				if recentFailedIdenticalCalls == 1 {
 					return fantasy.NewTextErrorResponse("Previous identical call was denied or failed. Use a different approach or clarify intent before retrying."), nil
+				}
+			}
+			if call.Name == "structured_output" {
+				retries := 0
+				for i := len(msgs) - 1; i >= 0 && len(msgs)-i <= 200; i-- {
+					for _, tc := range msgs[i].ToolCalls() {
+						if tc.Name == "structured_output" {
+							retries++
+						}
+					}
+				}
+				maxRetries := maxStructuredOutputRetries()
+				if retries >= maxRetries {
+					return fantasy.NewTextErrorResponse(fmt.Sprintf("Structured output retry limit reached (%d). Stop retrying unchanged and adjust approach.", maxRetries)), nil
 				}
 			}
 			if call.Name == AgentToolName &&
