@@ -349,6 +349,7 @@ func buildRuntimeSystemGuidance(
 	hasRecentInjectionSignal bool,
 	nonInteractive bool,
 	briefMode bool,
+	isFirstTurn bool,
 ) string {
 	toolset := map[string]struct{}{}
 	for _, t := range agentTools {
@@ -424,6 +425,12 @@ func buildRuntimeSystemGuidance(
 	}
 	if briefMode {
 		b.WriteString("- Brief mode is enabled: keep user-facing updates concise and high-level while still completing the full implementation.\n")
+	}
+	if isFirstTurn {
+		b.WriteString("- This is the first turn of a new session: start with a brief acknowledgement of the user's request before tool execution.\n")
+		if briefMode {
+			b.WriteString("- In brief mode on first turn, keep that acknowledgement to one short sentence and then proceed directly.\n")
+		}
 	}
 	b.WriteString("- If a tool call is denied, do not retry the exact same call unchanged.\n")
 	b.WriteString("- Report verification outcomes faithfully; do not claim checks passed without evidence.\n")
@@ -524,6 +531,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		hasRecentPromptInjectionSignal(msgs),
 		call.NonInteractive,
 		a.briefMode,
+		len(msgs) == 0,
 	))
 	if s := instructions.String(); s != "" {
 		dynamicPrompt = appendDynamicSection(dynamicPrompt, "<mcp-instructions>\n"+s+"\n</mcp-instructions>")

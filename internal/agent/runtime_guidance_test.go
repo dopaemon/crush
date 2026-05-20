@@ -67,7 +67,7 @@ func TestBuildRuntimeSystemGuidance_IncludesDeniedToolHint(t *testing.T) {
 		&mockAgentTool{name: tools.EditToolName},
 	}
 
-	guidance := buildRuntimeSystemGuidance(agentTools, false, tools.EditToolName, false, false, false, false, false, false, false, false, false, false)
+	guidance := buildRuntimeSystemGuidance(agentTools, false, tools.EditToolName, false, false, false, false, false, false, false, false, false, false, false)
 	require.True(t, strings.Contains(guidance, "recently denied permission"))
 	require.True(t, strings.Contains(guidance, tools.EditToolName))
 }
@@ -113,7 +113,7 @@ func TestBuildRuntimeSystemGuidance_NonInteractive(t *testing.T) {
 	agentTools := []fantasy.AgentTool{
 		&mockAgentTool{name: tools.ViewToolName},
 	}
-	guidance := buildRuntimeSystemGuidance(agentTools, false, "", false, false, false, false, false, false, false, false, true, false)
+	guidance := buildRuntimeSystemGuidance(agentTools, false, "", false, false, false, false, false, false, false, false, true, false, false)
 	require.True(t, strings.Contains(guidance, "non-interactive run"))
 }
 
@@ -121,8 +121,17 @@ func TestBuildRuntimeSystemGuidance_BriefMode(t *testing.T) {
 	agentTools := []fantasy.AgentTool{
 		&mockAgentTool{name: tools.ViewToolName},
 	}
-	guidance := buildRuntimeSystemGuidance(agentTools, false, "", false, false, false, false, false, false, false, false, false, true)
+	guidance := buildRuntimeSystemGuidance(agentTools, false, "", false, false, false, false, false, false, false, false, false, true, false)
 	require.True(t, strings.Contains(guidance, "Brief mode is enabled"))
+}
+
+func TestBuildRuntimeSystemGuidance_FirstTurn(t *testing.T) {
+	agentTools := []fantasy.AgentTool{
+		&mockAgentTool{name: tools.ViewToolName},
+	}
+	guidance := buildRuntimeSystemGuidance(agentTools, false, "", false, false, false, false, false, false, false, false, false, true, true)
+	require.True(t, strings.Contains(guidance, "first turn of a new session"))
+	require.True(t, strings.Contains(guidance, "one short sentence"))
 }
 
 func TestHasRecentHookBlock(t *testing.T) {
