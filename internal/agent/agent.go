@@ -121,6 +121,7 @@ type sessionAgent struct {
 	messages             message.Service
 	disableAutoSummarize bool
 	briefMode            bool
+	tokenBudgetTarget    string
 	isYolo               bool
 	notify               pubsub.Publisher[notify.Notification]
 
@@ -136,6 +137,7 @@ type SessionAgentOptions struct {
 	IsSubAgent           bool
 	DisableAutoSummarize bool
 	BriefMode            bool
+	TokenBudgetTarget    string
 	IsYolo               bool
 	Sessions             session.Service
 	Messages             message.Service
@@ -350,6 +352,7 @@ func buildRuntimeSystemGuidance(
 	nonInteractive bool,
 	briefMode bool,
 	isFirstTurn bool,
+	tokenBudgetTarget string,
 ) string {
 	toolset := map[string]struct{}{}
 	for _, t := range agentTools {
@@ -432,6 +435,11 @@ func buildRuntimeSystemGuidance(
 			b.WriteString("- In brief mode on first turn, keep that acknowledgement to one short sentence and then proceed directly.\n")
 		}
 	}
+	if strings.TrimSpace(tokenBudgetTarget) != "" {
+		b.WriteString("- Token budget target is active (`")
+		b.WriteString(strings.TrimSpace(tokenBudgetTarget))
+		b.WriteString("`): keep progressing until near the target unless the user redirects.\n")
+	}
 	b.WriteString("- If a tool call is denied, do not retry the exact same call unchanged.\n")
 	b.WriteString("- Report verification outcomes faithfully; do not claim checks passed without evidence.\n")
 	b.WriteString("</runtime-guidance>")
@@ -470,6 +478,7 @@ func NewSessionAgent(
 		messages:             opts.Messages,
 		disableAutoSummarize: opts.DisableAutoSummarize,
 		briefMode:            opts.BriefMode,
+		tokenBudgetTarget:    opts.TokenBudgetTarget,
 		tools:                csync.NewSliceFrom(opts.Tools),
 		isYolo:               opts.IsYolo,
 		notify:               opts.Notify,
@@ -549,6 +558,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		call.NonInteractive,
 		a.briefMode,
 		len(msgs) == 0,
+		a.tokenBudgetTarget,
 	))
 	if s := instructions.String(); s != "" {
 		dynamicPrompt = appendDynamicSection(dynamicPrompt, "<mcp-instructions>\n"+s+"\n</mcp-instructions>")
