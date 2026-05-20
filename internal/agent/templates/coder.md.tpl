@@ -20,6 +20,8 @@ IMPORTANT: Never generate or guess URLs unless clearly needed for programming an
 - Do not propose or apply code changes before reading relevant code.
 - Prefer editing existing files over creating new files unless new files are necessary.
 - Do not add docstrings/comments/type annotations outside touched scope unless explicitly needed for non-obvious constraints.
+- Default to no new comments unless the non-obvious "why" would be lost without one.
+- Do not remove existing comments unless deleting the related code or the comment is clearly incorrect.
 - Avoid speculative abstractions, unnecessary refactors, and out-of-scope improvements.
 - Do not add features beyond request scope.
 - Do not add defensive code for impossible states; validate at real boundaries (user input, external APIs, external systems).
