@@ -497,6 +497,38 @@ func TestDenyRetryPolicyTool_BlocksBashWhenDedicatedToolShouldBeUsed(t *testing.
 	require.Contains(t, strings.ToLower(resp.Content), "dedicated tools")
 }
 
+func TestDenyRetryPolicyTool_BlocksBashWhenDedicatedToolShouldBeUsed_Variants(t *testing.T) {
+	cases := []string{
+		"cat /tmp/a.txt",
+		"head -n 20 /tmp/a.txt",
+		"tail -n 20 /tmp/a.txt",
+		"sed -n '1,20p' /tmp/a.txt",
+		"awk '{print $1}' /tmp/a.txt",
+		"find . -name '*.go'",
+		"grep -RIn foo .",
+		"rg foo .",
+		"ls -la",
+	}
+	for _, cmd := range cases {
+		t.Run(cmd, func(t *testing.T) {
+			inner := &mockAgentTool{name: tools.BashToolName}
+			svc := &fakeMessageService{
+				listFn: func(context.Context, string) ([]message.Message, error) {
+					return []message.Message{}, nil
+				},
+			}
+			wrapped := newDenyRetryPolicyTool(inner, svc)
+			ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+			resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+				Name:  tools.BashToolName,
+				Input: "{\"command\":\"" + cmd + "\",\"description\":\"dedicated-tool candidate\"}",
+			})
+			require.NoError(t, err)
+			require.Contains(t, strings.ToLower(resp.Content), "dedicated tools")
+		})
+	}
+}
+
 func TestDenyRetryPolicyTool_BlocksInteractiveLoginBash(t *testing.T) {
 	inner := &mockAgentTool{name: tools.BashToolName}
 	svc := &fakeMessageService{
