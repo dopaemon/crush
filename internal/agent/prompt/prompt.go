@@ -28,6 +28,7 @@ type Prompt struct {
 	workingDir string
 	toolNames  []string
 	isSubAgent bool
+	sections   *sectionCache
 }
 
 type PromptDat struct {
@@ -86,6 +87,7 @@ func NewPrompt(name, promptTemplate string, opts ...Option) (*Prompt, error) {
 		name:     name,
 		template: promptTemplate,
 		now:      time.Now,
+		sections: newSectionCache(),
 	}
 	for _, opt := range opts {
 		opt(p)
@@ -223,7 +225,36 @@ func (p *Prompt) promptData(ctx context.Context, provider, model string, store *
 		Platform:      platform,
 		Date:          p.now().Format("1/2/2006"),
 		AvailSkillXML: availSkillXML,
-		ToolGuidance:  renderToolGuidance(p.toolNames, p.isSubAgent),
+		ToolGuidance:  "",
+	}
+	sections := []promptSection{
+		systemPromptSection("tool_guidance", func(_ PromptDat) string {
+			return renderToolGuidance(p.toolNames, p.isSubAgent)
+		}),
+		uncachedSystemPromptSection("noop_uncached_guard", func(_ PromptDat) string {
+			// Placeholder section to keep parity with section architecture
+			// used by more dynamic prompt builders.
+			return ""
+		}),
+	}
+	for _, s := range sections {
+		if s.cacheBreak {
+			if s.name == "tool_guidance" {
+				data.ToolGuidance = s.compute(data)
+			}
+			continue
+		}
+		if v, ok := p.sections.get(s.name); ok {
+			if s.name == "tool_guidance" {
+				data.ToolGuidance = v
+			}
+			continue
+		}
+		v := s.compute(data)
+		p.sections.set(s.name, v)
+		if s.name == "tool_guidance" {
+			data.ToolGuidance = v
+		}
 	}
 	if isGit {
 		var err error
