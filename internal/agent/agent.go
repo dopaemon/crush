@@ -402,6 +402,23 @@ func hasVerifierCommandEvidence(msgs []message.Message) bool {
 	return false
 }
 
+func hasVerifierDivergenceSignal(msgs []message.Message) bool {
+	for i := len(msgs) - 1; i >= 0; i-- {
+		for _, tr := range msgs[i].ToolResults() {
+			content := strings.ToLower(tr.Content)
+			if strings.Contains(content, "missing command block") ||
+				strings.Contains(content, "diverges from rerun") ||
+				strings.Contains(content, "resume the verifier") {
+				return true
+			}
+		}
+		if len(msgs)-i > 100 {
+			break
+		}
+	}
+	return false
+}
+
 func buildRuntimeSystemGuidance(
 	agentTools []fantasy.AgentTool,
 	isSubAgent bool,
@@ -417,6 +434,7 @@ func buildRuntimeSystemGuidance(
 	hasRecentVerifierRun bool,
 	verificationVerdict string,
 	hasVerifierEvidence bool,
+	hasVerifierDivergence bool,
 	nonInteractive bool,
 	briefMode bool,
 	isFirstTurn bool,
@@ -481,7 +499,9 @@ func buildRuntimeSystemGuidance(
 				case "partial":
 					b.WriteString("- Verification contract: latest verifier verdict is PARTIAL. Report verified scope and unresolved checks explicitly.\n")
 				case "pass":
-					if hasVerifierEvidence {
+					if hasVerifierDivergence {
+						b.WriteString("- Verification contract: verifier divergence detected. Resume verifier with specific mismatches and rerun before completion.\n")
+					} else if hasVerifierEvidence {
 						b.WriteString("- Verification contract: latest verifier verdict is PASS with command-run evidence. Spot-check key commands before final completion.\n")
 					} else {
 						b.WriteString("- Verification contract: latest verifier verdict is PASS but command-run evidence is missing. Rerun verifier with explicit command blocks before completion.\n")
@@ -648,6 +668,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		hasRecentVerificationAgentRun(msgs),
 		recentVerificationVerdict(msgs),
 		hasVerifierCommandEvidence(msgs),
+		hasVerifierDivergenceSignal(msgs),
 		call.NonInteractive,
 		a.briefMode,
 		len(msgs) == 0,
