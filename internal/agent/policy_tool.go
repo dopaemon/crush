@@ -35,13 +35,30 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 	if sessionID != "" {
 		msgs, err := d.messages.List(ctx, sessionID)
 		if err == nil {
+			deniedCallIDs := map[string]struct{}{}
 			for i := len(msgs) - 1; i >= 0 && len(msgs)-i <= 30; i-- {
 				for _, tr := range msgs[i].ToolResults() {
-					if tr.Name != call.Name {
+					if tr.Name != call.Name || tr.ToolCallID == "" {
 						continue
 					}
 					if strings.Contains(strings.ToLower(tr.Content), "user denied permission") {
-						return fantasy.NewTextErrorResponse("Previous call to this tool was denied by user. Use a different approach or ask user intent before retrying."), nil
+						deniedCallIDs[tr.ToolCallID] = struct{}{}
+					}
+				}
+			}
+			if len(deniedCallIDs) > 0 {
+				for i := len(msgs) - 1; i >= 0 && len(msgs)-i <= 30; i-- {
+					for _, tc := range msgs[i].ToolCalls() {
+						if tc.Name != call.Name || tc.ID == "" {
+							continue
+						}
+						if _, denied := deniedCallIDs[tc.ID]; !denied {
+							continue
+						}
+						// Block only identical retries of denied calls.
+						if tc.Input == call.Input {
+							return fantasy.NewTextErrorResponse("Previous identical call was denied by user. Use a different approach or clarify intent before retrying."), nil
+						}
 					}
 				}
 			}
@@ -49,4 +66,3 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 	}
 	return d.inner.Run(ctx, call)
 }
-

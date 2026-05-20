@@ -50,9 +50,19 @@ func TestDenyRetryPolicyTool_BlocksAfterDenied(t *testing.T) {
 				{
 					Parts: []message.ContentPart{
 						message.ToolResult{
+							ToolCallID: "c1",
 							Name:    tools.EditToolName,
 							Content: "User denied permission",
 							IsError: true,
+						},
+					},
+				},
+				{
+					Parts: []message.ContentPart{
+						message.ToolCall{
+							ID:    "c1",
+							Name:  tools.EditToolName,
+							Input: `{"file_path":"/tmp/a.go","old_string":"x","new_string":"y"}`,
 						},
 					},
 				},
@@ -61,9 +71,12 @@ func TestDenyRetryPolicyTool_BlocksAfterDenied(t *testing.T) {
 	}
 	wrapped := newDenyRetryPolicyTool(inner, svc)
 	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
-	resp, err := wrapped.Run(ctx, fantasy.ToolCall{Name: tools.EditToolName})
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+		Name:  tools.EditToolName,
+		Input: `{"file_path":"/tmp/a.go","old_string":"x","new_string":"y"}`,
+	})
 	require.NoError(t, err)
-	require.Contains(t, resp.Content, "denied by user")
+	require.Contains(t, resp.Content, "identical call")
 }
 
 func TestDenyRetryPolicyTool_AllowsWhenNoDeniedHistory(t *testing.T) {
@@ -80,3 +93,39 @@ func TestDenyRetryPolicyTool_AllowsWhenNoDeniedHistory(t *testing.T) {
 	require.Contains(t, resp.Content, "ok")
 }
 
+func TestDenyRetryPolicyTool_AllowsDifferentInputAfterDenied(t *testing.T) {
+	inner := &mockAgentTool{name: tools.EditToolName}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{
+				{
+					Parts: []message.ContentPart{
+						message.ToolResult{
+							ToolCallID: "c1",
+							Name:       tools.EditToolName,
+							Content:    "User denied permission",
+							IsError:    true,
+						},
+					},
+				},
+				{
+					Parts: []message.ContentPart{
+						message.ToolCall{
+							ID:    "c1",
+							Name:  tools.EditToolName,
+							Input: `{"file_path":"/tmp/a.go","old_string":"x","new_string":"y"}`,
+						},
+					},
+				},
+			}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+		Name:  tools.EditToolName,
+		Input: `{"file_path":"/tmp/a.go","old_string":"x","new_string":"z"}`,
+	})
+	require.NoError(t, err)
+	require.Contains(t, resp.Content, "ok")
+}
