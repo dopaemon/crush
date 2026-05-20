@@ -3249,6 +3249,10 @@ func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
 			return true, util.ReportError(err)
 		}
 		m.session = &newSession
+		if m.forceCompactMode {
+			m.isCompact = true
+		}
+		m.setState(uiChat, m.focus)
 	}
 
 	goal, err := m.com.Workspace.ThreadGoalGet(context.Background(), m.session.ID)
