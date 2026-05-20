@@ -414,6 +414,8 @@ func renderSessionGuidance(toolNames []string, isSubAgent bool, opts *config.Opt
 	lines = append(lines, "# Session Guidance")
 	lines = append(lines, "- Adapt tool usage to the currently enabled toolset.")
 	lines = append(lines, "- If an exact tool call was denied, adjust input/tool instead of retrying unchanged.")
+	lines = append(lines, "- If the user must run an interactive shell login themselves, provide the exact `! <command>` to run in-session.")
+	lines = append(lines, "- Do not use a trailing colon right before a tool call preamble sentence.")
 	if isSubAgent {
 		lines = append(lines, "- You are operating as a subagent; avoid recursive delegation.")
 	}
