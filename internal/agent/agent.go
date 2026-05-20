@@ -199,6 +199,7 @@ func buildRuntimeSystemGuidance(
 	lastDeniedTool string,
 	needsVerificationContract bool,
 	hasRecentFailedChecks bool,
+	nonInteractive bool,
 ) string {
 	toolset := map[string]struct{}{}
 	for _, t := range agentTools {
@@ -250,6 +251,9 @@ func buildRuntimeSystemGuidance(
 	}
 	if hasRecentFailedChecks {
 		b.WriteString("- Recent verification failure detected. Do not claim completion until failures are fixed or clearly scoped as unresolved.\n")
+	}
+	if nonInteractive {
+		b.WriteString("- This is a non-interactive run: avoid asking follow-up questions unless absolutely required to unblock execution.\n")
 	}
 	b.WriteString("- If a tool call is denied, do not retry the exact same call unchanged.\n")
 	b.WriteString("- Report verification outcomes faithfully; do not claim checks passed without evidence.\n")
@@ -345,6 +349,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		lastDeniedToolFromHistory(msgs),
 		hasNonTrivialRecentImplementation(msgs),
 		hasRecentVerificationFailure(msgs),
+		call.NonInteractive,
 	)
 
 	var wg sync.WaitGroup
