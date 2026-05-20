@@ -26,6 +26,8 @@ type Prompt struct {
 	now        func() time.Time
 	platform   string
 	workingDir string
+	toolNames  []string
+	isSubAgent bool
 }
 
 type PromptDat struct {
@@ -39,6 +41,7 @@ type PromptDat struct {
 	GitStatus     string
 	ContextFiles  []ContextFile
 	AvailSkillXML string
+	ToolGuidance  string
 }
 
 type ContextFile struct {
@@ -63,6 +66,18 @@ func WithPlatform(platform string) Option {
 func WithWorkingDir(workingDir string) Option {
 	return func(p *Prompt) {
 		p.workingDir = workingDir
+	}
+}
+
+func WithToolNames(toolNames []string) Option {
+	return func(p *Prompt) {
+		p.toolNames = append([]string(nil), toolNames...)
+	}
+}
+
+func WithSubAgent(isSubAgent bool) Option {
+	return func(p *Prompt) {
+		p.isSubAgent = isSubAgent
 	}
 }
 
@@ -208,6 +223,7 @@ func (p *Prompt) promptData(ctx context.Context, provider, model string, store *
 		Platform:      platform,
 		Date:          p.now().Format("1/2/2006"),
 		AvailSkillXML: availSkillXML,
+		ToolGuidance:  renderToolGuidance(p.toolNames, p.isSubAgent),
 	}
 	if isGit {
 		var err error
@@ -221,6 +237,48 @@ func (p *Prompt) promptData(ctx context.Context, provider, model string, store *
 		data.ContextFiles = append(data.ContextFiles, contextFiles...)
 	}
 	return data, nil
+}
+
+func renderToolGuidance(toolNames []string, isSubAgent bool) string {
+	if len(toolNames) == 0 {
+		return ""
+	}
+	toolset := make(map[string]struct{}, len(toolNames))
+	for _, n := range toolNames {
+		toolset[n] = struct{}{}
+	}
+	has := func(name string) bool {
+		_, ok := toolset[name]
+		return ok
+	}
+
+	lines := make([]string, 0, 12)
+	lines = append(lines, "- Session tool guidance is derived from allowed tools for this agent.")
+	if has("view") {
+		lines = append(lines, "- Read file contents with `view` before proposing edits.")
+	}
+	if has("edit") || has("multiedit") || has("write") {
+		lines = append(lines, "- Prefer `edit`/`multiedit`/`write` for code changes instead of shell text replacement.")
+	}
+	if has("glob") || has("grep") || has("ls") {
+		lines = append(lines, "- Use `glob`/`grep`/`ls` for discovery before changing files.")
+	}
+	if has("bash") {
+		lines = append(lines, "- Use `bash` only for shell/system operations not covered by dedicated tools.")
+	}
+	if has("agent") {
+		lines = append(lines, "- Delegate independent side tasks with `agent`; avoid duplicating delegated work.")
+	}
+	if has("todos") {
+		lines = append(lines, "- Keep todos current while executing multi-step tasks.")
+	}
+	if has("web_search") || has("web_fetch") || has("fetch") {
+		lines = append(lines, "- For web research, iterate focused queries and fetch primary sources before concluding.")
+	}
+	if isSubAgent {
+		lines = append(lines, "- You are a subagent: execute directly; do not recursively delegate unless explicitly needed.")
+	}
+	return strings.Join(lines, "\n")
 }
 
 func isGitRepo(dir string) bool {

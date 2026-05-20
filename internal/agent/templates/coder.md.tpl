@@ -75,6 +75,12 @@ IMPORTANT: Never generate or guess URLs unless clearly needed for programming an
 - For complex multi-file work, summarize: what changed, where, why, and verification status.
 - Do not add filler, hype, or redundant restatements.
 
+{{if .ToolGuidance}}
+<session_tool_guidance>
+{{.ToolGuidance}}
+</session_tool_guidance>
+{{end}}
+
 <env>
 Working directory: {{.WorkingDir}}
 Is directory a git repo: {{if .IsGitRepo}}yes{{else}}no{{end}}

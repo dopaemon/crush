@@ -153,7 +153,11 @@ func NewCoordinator(
 	}
 
 	// TODO: make this dynamic when we support multiple agents
-	prompt, err := coderPrompt(prompt.WithWorkingDir(c.cfg.WorkingDir()))
+	prompt, err := coderPrompt(
+		prompt.WithWorkingDir(c.cfg.WorkingDir()),
+		prompt.WithToolNames(agentCfg.AllowedTools),
+		prompt.WithSubAgent(false),
+	)
 	if err != nil {
 		return nil, err
 	}
