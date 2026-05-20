@@ -120,6 +120,7 @@ type sessionAgent struct {
 	sessions             session.Service
 	messages             message.Service
 	disableAutoSummarize bool
+	briefMode            bool
 	isYolo               bool
 	notify               pubsub.Publisher[notify.Notification]
 
@@ -134,6 +135,7 @@ type SessionAgentOptions struct {
 	SystemPrompt         string
 	IsSubAgent           bool
 	DisableAutoSummarize bool
+	BriefMode            bool
 	IsYolo               bool
 	Sessions             session.Service
 	Messages             message.Service
@@ -346,6 +348,7 @@ func buildRuntimeSystemGuidance(
 	hasRecentRiskyShell bool,
 	hasRecentInjectionSignal bool,
 	nonInteractive bool,
+	briefMode bool,
 ) string {
 	toolset := map[string]struct{}{}
 	for _, t := range agentTools {
@@ -419,6 +422,9 @@ func buildRuntimeSystemGuidance(
 	if nonInteractive {
 		b.WriteString("- This is a non-interactive run: avoid asking follow-up questions unless absolutely required to unblock execution.\n")
 	}
+	if briefMode {
+		b.WriteString("- Brief mode is enabled: keep user-facing updates concise and high-level while still completing the full implementation.\n")
+	}
 	b.WriteString("- If a tool call is denied, do not retry the exact same call unchanged.\n")
 	b.WriteString("- Report verification outcomes faithfully; do not claim checks passed without evidence.\n")
 	b.WriteString("</runtime-guidance>")
@@ -439,6 +445,7 @@ func NewSessionAgent(
 		sessions:             opts.Sessions,
 		messages:             opts.Messages,
 		disableAutoSummarize: opts.DisableAutoSummarize,
+		briefMode:            opts.BriefMode,
 		tools:                csync.NewSliceFrom(opts.Tools),
 		isYolo:               opts.IsYolo,
 		notify:               opts.Notify,
@@ -516,6 +523,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		hasRecentRiskyShellIntent(msgs),
 		hasRecentPromptInjectionSignal(msgs),
 		call.NonInteractive,
+		a.briefMode,
 	))
 	if s := instructions.String(); s != "" {
 		dynamicPrompt = appendDynamicSection(dynamicPrompt, "<mcp-instructions>\n"+s+"\n</mcp-instructions>")
