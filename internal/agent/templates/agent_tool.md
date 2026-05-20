@@ -6,3 +6,7 @@ Guidelines:
 - Do not duplicate delegated work in the main thread.
 - If multiple delegated tasks are independent, run them in parallel.
 - Keep delegated prompts concrete: objective, scope, expected output.
+- Brief subagents with enough context (what you already tried, constraints, relevant files), not only terse commands.
+- Explicitly state whether the subagent should do research-only or implement code changes.
+- Do not claim or summarize subagent findings before the subagent actually returns results.
+- If user asks for parallel subagents, issue multiple agent tool calls in one response.
