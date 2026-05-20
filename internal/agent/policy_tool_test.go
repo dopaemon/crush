@@ -514,6 +514,32 @@ func TestDenyRetryPolicyTool_BlocksInteractiveLoginBash(t *testing.T) {
 	require.Contains(t, resp.Content, "! <command>")
 }
 
+func TestDenyRetryPolicyTool_BlocksInteractiveLoginBashVariants(t *testing.T) {
+	cases := []string{
+		"gh auth login",
+		"az login",
+		"docker login",
+	}
+	for _, cmd := range cases {
+		t.Run(cmd, func(t *testing.T) {
+			inner := &mockAgentTool{name: tools.BashToolName}
+			svc := &fakeMessageService{
+				listFn: func(context.Context, string) ([]message.Message, error) {
+					return []message.Message{}, nil
+				},
+			}
+			wrapped := newDenyRetryPolicyTool(inner, svc)
+			ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+			resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+				Name:  tools.BashToolName,
+				Input: "{\"command\":\"" + cmd + "\",\"description\":\"authenticate\"}",
+			})
+			require.NoError(t, err)
+			require.Contains(t, resp.Content, "! <command>")
+		})
+	}
+}
+
 func TestDenyRetryPolicyTool_BlocksShellFileWriteRedirection(t *testing.T) {
 	inner := &mockAgentTool{name: tools.BashToolName}
 	svc := &fakeMessageService{
