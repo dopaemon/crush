@@ -146,7 +146,8 @@ func looksLikeShellFileWriteCommand(cmd string) bool {
 		return false
 	}
 	trimmed := strings.TrimSpace(strings.ToLower(cmd))
-	if strings.Contains(trimmed, ">>") || strings.Contains(trimmed, " > ") || strings.HasSuffix(trimmed, ">") {
+	hasSingleRedirect := strings.Contains(trimmed, ">") && !strings.Contains(trimmed, "2>") && !strings.Contains(trimmed, "1>")
+	if strings.Contains(trimmed, ">>") || hasSingleRedirect {
 		if strings.HasPrefix(trimmed, "echo ") ||
 			strings.HasPrefix(trimmed, "printf ") ||
 			strings.HasPrefix(trimmed, "cat ") {
