@@ -563,3 +563,57 @@ func TestDenyRetryPolicyTool_AllowsVerificationAgentCallWhenVerifierRequired(t *
 	require.NoError(t, err)
 	require.Contains(t, resp.Content, "ok")
 }
+
+func TestDenyRetryPolicyTool_BlocksNonVerificationAgentCallWhenVerifierVerdictFail(t *testing.T) {
+	inner := &mockAgentTool{name: AgentToolName}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{
+				{
+					Parts: []message.ContentPart{
+						message.ToolCall{Name: tools.EditToolName},
+						message.ToolCall{Name: tools.MultiEditToolName},
+						message.ToolCall{Name: tools.WriteToolName},
+					},
+				},
+				{
+					Parts: []message.ContentPart{
+						message.ToolResult{Name: AgentToolName, Content: "Verifier verdict: FAIL"},
+					},
+				},
+			}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{Name: AgentToolName, Input: `{"prompt":"delegate"}`})
+	require.NoError(t, err)
+	require.Contains(t, resp.Content, "Verification contract active")
+}
+
+func TestDenyRetryPolicyTool_AllowsNonVerificationAgentCallWhenVerifierSatisfied(t *testing.T) {
+	inner := &mockAgentTool{name: AgentToolName}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{
+				{
+					Parts: []message.ContentPart{
+						message.ToolCall{Name: tools.EditToolName},
+						message.ToolCall{Name: tools.MultiEditToolName},
+						message.ToolCall{Name: tools.WriteToolName},
+					},
+				},
+				{
+					Parts: []message.ContentPart{
+						message.ToolResult{Name: AgentToolName, Content: "Verifier verdict: PASS\nCommand run: go test ./...\nOutput: ok"},
+					},
+				},
+			}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{Name: AgentToolName, Input: `{"prompt":"delegate"}`})
+	require.NoError(t, err)
+	require.Contains(t, resp.Content, "ok")
+}

@@ -92,6 +92,19 @@ func isVerificationAgentCall(input string) bool {
 	return strings.EqualFold(strings.TrimSpace(raw), verificationAgentType)
 }
 
+func verifierContractSatisfied(msgs []message.Message) bool {
+	if recentVerificationVerdict(msgs) != "pass" {
+		return false
+	}
+	if !hasVerifierCommandEvidence(msgs) {
+		return false
+	}
+	if hasVerifierDivergenceSignal(msgs) {
+		return false
+	}
+	return true
+}
+
 func normalizeJSONInput(input string) string {
 	var v any
 	if err := json.Unmarshal([]byte(input), &v); err != nil {
@@ -194,7 +207,7 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 			}
 			if call.Name == AgentToolName &&
 				hasNonTrivialRecentImplementation(msgs) &&
-				!hasRecentVerificationAgentRun(msgs) &&
+				!verifierContractSatisfied(msgs) &&
 				!isVerificationAgentCall(call.Input) {
 				return fantasy.NewTextErrorResponse("Verification contract active: run `agent` with `subagent_type=\"verification\"` before other delegation."), nil
 			}
