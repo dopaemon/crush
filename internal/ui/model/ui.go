@@ -3365,7 +3365,10 @@ func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
 			return true, util.ReportError(err)
 		}
 		m.session.Goal = updatedGoal
-		return true, util.ReportInfo("Goal updated.")
+		return true, tea.Batch(
+			util.ReportInfo("Goal updated."),
+			m.sendMessage(args),
+		)
 	}
 }
 
