@@ -172,7 +172,34 @@ func hasNonTrivialRecentImplementation(msgs []message.Message) bool {
 	return false
 }
 
-func buildRuntimeSystemGuidance(agentTools []fantasy.AgentTool, isSubAgent bool, lastDeniedTool string, needsVerificationContract bool) string {
+func hasRecentVerificationFailure(msgs []message.Message) bool {
+	for i := len(msgs) - 1; i >= 0; i-- {
+		for _, tr := range msgs[i].ToolResults() {
+			content := strings.ToLower(tr.Content)
+			// Keep this heuristic conservative and tied to explicit failure markers.
+			if strings.Contains(content, " fail\t") ||
+				strings.Contains(content, "\nfail") ||
+				strings.Contains(content, "test failed") ||
+				strings.Contains(content, "lint failed") ||
+				strings.Contains(content, "typecheck failed") ||
+				strings.Contains(content, "build failed") {
+				return true
+			}
+		}
+		if len(msgs)-i > 30 {
+			break
+		}
+	}
+	return false
+}
+
+func buildRuntimeSystemGuidance(
+	agentTools []fantasy.AgentTool,
+	isSubAgent bool,
+	lastDeniedTool string,
+	needsVerificationContract bool,
+	hasRecentFailedChecks bool,
+) string {
 	toolset := map[string]struct{}{}
 	for _, t := range agentTools {
 		toolset[t.Info().Name] = struct{}{}
@@ -220,6 +247,9 @@ func buildRuntimeSystemGuidance(agentTools []fantasy.AgentTool, isSubAgent bool,
 	}
 	if needsVerificationContract {
 		b.WriteString("- Non-trivial recent implementation detected. Before claiming completion, run independent verification commands and report exact outcomes.\n")
+	}
+	if hasRecentFailedChecks {
+		b.WriteString("- Recent verification failure detected. Do not claim completion until failures are fixed or clearly scoped as unresolved.\n")
 	}
 	b.WriteString("- If a tool call is denied, do not retry the exact same call unchanged.\n")
 	b.WriteString("- Report verification outcomes faithfully; do not claim checks passed without evidence.\n")
@@ -314,6 +344,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		a.isSubAgent,
 		lastDeniedToolFromHistory(msgs),
 		hasNonTrivialRecentImplementation(msgs),
+		hasRecentVerificationFailure(msgs),
 	)
 
 	var wg sync.WaitGroup
