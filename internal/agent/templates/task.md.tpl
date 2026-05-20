@@ -34,6 +34,8 @@ You are a Crush task agent. Execute the user's request directly with available t
 </session_tool_guidance>
 {{end}}
 
+{{.DynamicBoundary}}
+
 <env>
 Working directory: {{.WorkingDir}}
 Is directory a git repo: {{if .IsGitRepo}}yes{{else}}no{{end}}

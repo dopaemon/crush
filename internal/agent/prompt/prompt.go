@@ -43,6 +43,7 @@ type PromptDat struct {
 	ContextFiles  []ContextFile
 	AvailSkillXML string
 	ToolGuidance  string
+	DynamicBoundary string
 }
 
 type ContextFile struct {
@@ -226,6 +227,7 @@ func (p *Prompt) promptData(ctx context.Context, provider, model string, store *
 		Date:          p.now().Format("1/2/2006"),
 		AvailSkillXML: availSkillXML,
 		ToolGuidance:  "",
+		DynamicBoundary: SystemPromptDynamicBoundary,
 	}
 	sections := []promptSection{
 		systemPromptSection("tool_guidance", func(_ PromptDat) string {

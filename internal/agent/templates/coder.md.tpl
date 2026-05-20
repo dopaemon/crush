@@ -81,6 +81,8 @@ IMPORTANT: Never generate or guess URLs unless clearly needed for programming an
 </session_tool_guidance>
 {{end}}
 
+{{.DynamicBoundary}}
+
 <env>
 Working directory: {{.WorkingDir}}
 Is directory a git repo: {{if .IsGitRepo}}yes{{else}}no{{end}}
