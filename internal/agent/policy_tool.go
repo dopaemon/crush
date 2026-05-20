@@ -92,6 +92,19 @@ func isVerificationAgentCall(input string) bool {
 	return strings.EqualFold(strings.TrimSpace(raw), verificationAgentType)
 }
 
+func verificationPromptHasRequiredContext(input string) bool {
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(input), &payload); err != nil {
+		return false
+	}
+	prompt, _ := payload["prompt"].(string)
+	p := strings.ToLower(prompt)
+	hasOriginalRequest := strings.Contains(p, "original request")
+	hasChangedFiles := strings.Contains(p, "changed files") || strings.Contains(p, "files changed")
+	hasApproach := strings.Contains(p, "approach")
+	return hasOriginalRequest && hasChangedFiles && hasApproach
+}
+
 func verifierContractSatisfied(msgs []message.Message) bool {
 	if recentVerificationVerdict(msgs) != "pass" {
 		return false
@@ -210,6 +223,12 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 				!verifierContractSatisfied(msgs) &&
 				!isVerificationAgentCall(call.Input) {
 				return fantasy.NewTextErrorResponse("Verification contract active: run `agent` with `subagent_type=\"verification\"` before other delegation."), nil
+			}
+			if call.Name == AgentToolName &&
+				isVerificationAgentCall(call.Input) &&
+				hasNonTrivialRecentImplementation(msgs) &&
+				!verificationPromptHasRequiredContext(call.Input) {
+				return fantasy.NewTextErrorResponse("Verification contract active: verification prompt must include original request, changed files, and approach."), nil
 			}
 			switch call.Name {
 			case tools.EditToolName, tools.MultiEditToolName:
