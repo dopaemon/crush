@@ -327,6 +327,10 @@ func TestDenyRetryPolicyTool_BlocksEquivalentJSONRetry(t *testing.T) {
 }
 
 func TestDenyRetryPolicyTool_BlocksEditWithoutRecentView(t *testing.T) {
+	tmpDir := t.TempDir()
+	target := filepath.Join(tmpDir, "a.go")
+	require.NoError(t, os.WriteFile(target, []byte("old"), 0o644))
+
 	inner := &mockAgentTool{name: tools.EditToolName}
 	svc := &fakeMessageService{
 		listFn: func(context.Context, string) ([]message.Message, error) {
@@ -337,7 +341,7 @@ func TestDenyRetryPolicyTool_BlocksEditWithoutRecentView(t *testing.T) {
 	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
 	resp, err := wrapped.Run(ctx, fantasy.ToolCall{
 		Name:  tools.EditToolName,
-		Input: `{"file_path":"/tmp/a.go","old_string":"x","new_string":"y"}`,
+		Input: `{"file_path":"` + target + `","old_string":"x","new_string":"y"}`,
 	})
 	require.NoError(t, err)
 	require.Contains(t, resp.Content, "Read-before-edit policy")
@@ -365,6 +369,26 @@ func TestDenyRetryPolicyTool_AllowsEditAfterRecentView(t *testing.T) {
 	resp, err := wrapped.Run(ctx, fantasy.ToolCall{
 		Name:  tools.EditToolName,
 		Input: `{"file_path":"/tmp/a.go","old_string":"x","new_string":"y"}`,
+	})
+	require.NoError(t, err)
+	require.Contains(t, resp.Content, "ok")
+}
+
+func TestDenyRetryPolicyTool_AllowsEditWhenFileDoesNotExist(t *testing.T) {
+	tmpDir := t.TempDir()
+	target := filepath.Join(tmpDir, "missing.go")
+
+	inner := &mockAgentTool{name: tools.EditToolName}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+		Name:  tools.EditToolName,
+		Input: `{"file_path":"` + target + `","old_string":"x","new_string":"y"}`,
 	})
 	require.NoError(t, err)
 	require.Contains(t, resp.Content, "ok")

@@ -148,8 +148,10 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 			switch call.Name {
 			case tools.EditToolName, tools.MultiEditToolName:
 				path := toolFilePath(call.Name, call.Input)
-				if path != "" && !hasRecentViewForPath(msgs, path) {
-					return fantasy.NewTextErrorResponse("Read-before-edit policy: call view on this file before editing."), nil
+				if path != "" {
+					if _, statErr := os.Stat(path); statErr == nil && !hasRecentViewForPath(msgs, path) {
+						return fantasy.NewTextErrorResponse("Read-before-edit policy: call view on this file before editing."), nil
+					}
 				}
 			case tools.WriteToolName:
 				path := toolFilePath(tools.WriteToolName, call.Input)
