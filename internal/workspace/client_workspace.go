@@ -154,6 +154,42 @@ func (w *ClientWorkspace) ClearSessionGoal(ctx context.Context, sessionID string
 	return protoToSession(*saved), nil
 }
 
+func (w *ClientWorkspace) ThreadGoalSet(ctx context.Context, req ThreadGoalSetRequest) (*session.Goal, error) {
+	var status *string
+	if req.Status != nil {
+		s := string(*req.Status)
+		status = &s
+	}
+	resp, err := w.client.ThreadGoalSet(ctx, w.workspaceID(), proto.ThreadGoalSetRequest{
+		SessionID:   req.SessionID,
+		Objective:   req.Objective,
+		Status:      status,
+		TokenBudget: req.TokenBudget,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return protoToGoal(resp.Goal), nil
+}
+
+func (w *ClientWorkspace) ThreadGoalGet(ctx context.Context, sessionID string) (*session.Goal, error) {
+	resp, err := w.client.ThreadGoalGet(ctx, w.workspaceID(), sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return protoToGoal(resp.Goal), nil
+}
+
+func (w *ClientWorkspace) ThreadGoalClear(ctx context.Context, sessionID string) (bool, error) {
+	resp, err := w.client.ThreadGoalClear(ctx, w.workspaceID(), proto.ThreadGoalClearRequest{
+		SessionID: sessionID,
+	})
+	if err != nil {
+		return false, err
+	}
+	return resp.Cleared, nil
+}
+
 func (w *ClientWorkspace) CreateAgentToolSessionID(messageID, toolCallID string) string {
 	return fmt.Sprintf("%s$$%s", messageID, toolCallID)
 }

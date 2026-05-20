@@ -3213,7 +3213,7 @@ func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
 		m.session = &newSession
 	}
 
-	goal, err := m.com.Workspace.GetSessionGoal(context.Background(), m.session.ID)
+	goal, err := m.com.Workspace.ThreadGoalGet(context.Background(), m.session.ID)
 	if err != nil {
 		return true, util.ReportError(err)
 	}
@@ -3234,11 +3234,15 @@ func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
 			}
 			goal.Status = nextStatus
 			goal.UpdatedAt = time.Now().Unix()
-			updated, setErr := m.com.Workspace.SetSessionGoal(context.Background(), m.session.ID, *goal)
+			updatedGoal, setErr := m.com.Workspace.ThreadGoalSet(context.Background(), workspace.ThreadGoalSetRequest{
+				SessionID: m.session.ID,
+				Objective: goal.Objective,
+				Status:    &goal.Status,
+			})
 			if setErr != nil {
 				return true, util.ReportError(setErr)
 			}
-			m.session = &updated
+			m.session.Goal = updatedGoal
 			return true, util.ReportInfo(fmt.Sprintf("Goal status set: %s", nextStatus))
 		}
 		budget := "none"
@@ -3263,18 +3267,23 @@ func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
 			goal.TokenBudget = &n
 		}
 		goal.UpdatedAt = time.Now().Unix()
-		updated, setErr := m.com.Workspace.SetSessionGoal(context.Background(), m.session.ID, *goal)
+		updatedGoal, setErr := m.com.Workspace.ThreadGoalSet(context.Background(), workspace.ThreadGoalSetRequest{
+			SessionID:   m.session.ID,
+			Objective:   goal.Objective,
+			Status:      &goal.Status,
+			TokenBudget: goal.TokenBudget,
+		})
 		if setErr != nil {
 			return true, util.ReportError(setErr)
 		}
-		m.session = &updated
+		m.session.Goal = updatedGoal
 		return true, util.ReportInfo("Goal budget updated.")
 	case "clear":
-		updated, err := m.com.Workspace.ClearSessionGoal(context.Background(), m.session.ID)
+		_, err := m.com.Workspace.ThreadGoalClear(context.Background(), m.session.ID)
 		if err != nil {
 			return true, util.ReportError(err)
 		}
-		m.session = &updated
+		m.session.Goal = nil
 		return true, util.ReportInfo("Goal cleared.")
 	default:
 		if nextStatus, ok := parseGoalStatus(parts[0]); ok {
@@ -3283,11 +3292,15 @@ func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
 			}
 			goal.Status = nextStatus
 			goal.UpdatedAt = time.Now().Unix()
-			updated, setErr := m.com.Workspace.SetSessionGoal(context.Background(), m.session.ID, *goal)
+			updatedGoal, setErr := m.com.Workspace.ThreadGoalSet(context.Background(), workspace.ThreadGoalSetRequest{
+				SessionID: m.session.ID,
+				Objective: goal.Objective,
+				Status:    &goal.Status,
+			})
 			if setErr != nil {
 				return true, util.ReportError(setErr)
 			}
-			m.session = &updated
+			m.session.Goal = updatedGoal
 			return true, util.ReportInfo(fmt.Sprintf("Goal status set: %s", nextStatus))
 		}
 		now := time.Now().Unix()
@@ -3304,11 +3317,16 @@ func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
 		} else {
 			newGoal.CreatedAt = now
 		}
-		updated, err := m.com.Workspace.SetSessionGoal(context.Background(), m.session.ID, newGoal)
+		updatedGoal, err := m.com.Workspace.ThreadGoalSet(context.Background(), workspace.ThreadGoalSetRequest{
+			SessionID:   m.session.ID,
+			Objective:   newGoal.Objective,
+			Status:      &newGoal.Status,
+			TokenBudget: newGoal.TokenBudget,
+		})
 		if err != nil {
 			return true, util.ReportError(err)
 		}
-		m.session = &updated
+		m.session.Goal = updatedGoal
 		return true, util.ReportInfo("Goal updated.")
 	}
 }

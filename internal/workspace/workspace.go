@@ -68,6 +68,9 @@ type Workspace interface {
 	SetSessionGoal(ctx context.Context, sessionID string, goal session.Goal) (session.Session, error)
 	GetSessionGoal(ctx context.Context, sessionID string) (*session.Goal, error)
 	ClearSessionGoal(ctx context.Context, sessionID string) (session.Session, error)
+	ThreadGoalSet(ctx context.Context, req ThreadGoalSetRequest) (*session.Goal, error)
+	ThreadGoalGet(ctx context.Context, sessionID string) (*session.Goal, error)
+	ThreadGoalClear(ctx context.Context, sessionID string) (bool, error)
 	CreateAgentToolSessionID(messageID, toolCallID string) string
 	ParseAgentToolSessionID(sessionID string) (messageID string, toolCallID string, ok bool)
 
@@ -152,4 +155,11 @@ type MCPResourceContents struct {
 	MIMEType string `json:"mime_type,omitempty"`
 	Text     string `json:"text,omitempty"`
 	Blob     []byte `json:"blob,omitempty"`
+}
+
+type ThreadGoalSetRequest struct {
+	SessionID   string
+	Objective   string
+	Status      *session.GoalStatus
+	TokenBudget *int64
 }

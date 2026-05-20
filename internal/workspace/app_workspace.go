@@ -85,6 +85,61 @@ func (w *AppWorkspace) ClearSessionGoal(ctx context.Context, sessionID string) (
 	return w.app.Sessions.Save(ctx, sess)
 }
 
+func (w *AppWorkspace) ThreadGoalSet(ctx context.Context, req ThreadGoalSetRequest) (*session.Goal, error) {
+	sess, err := w.app.Sessions.Get(ctx, req.SessionID)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().Unix()
+	goal := session.Goal{
+		Objective: req.Objective,
+		Status:    session.GoalStatusActive,
+		UpdatedAt: now,
+	}
+	if req.Status != nil {
+		goal.Status = *req.Status
+	}
+	if sess.Goal != nil {
+		goal.CreatedAt = sess.Goal.CreatedAt
+		goal.TokensUsed = sess.Goal.TokensUsed
+		goal.TimeUsedSecond = sess.Goal.TimeUsedSecond
+		goal.TokenBudget = sess.Goal.TokenBudget
+	} else {
+		goal.CreatedAt = now
+	}
+	if req.TokenBudget != nil {
+		goal.TokenBudget = req.TokenBudget
+	}
+	sess.Goal = &goal
+	updated, err := w.app.Sessions.Save(ctx, sess)
+	if err != nil {
+		return nil, err
+	}
+	return updated.Goal, nil
+}
+
+func (w *AppWorkspace) ThreadGoalGet(ctx context.Context, sessionID string) (*session.Goal, error) {
+	sess, err := w.app.Sessions.Get(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return sess.Goal, nil
+}
+
+func (w *AppWorkspace) ThreadGoalClear(ctx context.Context, sessionID string) (bool, error) {
+	sess, err := w.app.Sessions.Get(ctx, sessionID)
+	if err != nil {
+		return false, err
+	}
+	cleared := sess.Goal != nil
+	sess.Goal = nil
+	_, err = w.app.Sessions.Save(ctx, sess)
+	if err != nil {
+		return false, err
+	}
+	return cleared, nil
+}
+
 func (w *AppWorkspace) CreateAgentToolSessionID(messageID, toolCallID string) string {
 	return w.app.Sessions.CreateAgentToolSessionID(messageID, toolCallID)
 }
