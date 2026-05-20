@@ -385,6 +385,23 @@ func recentVerificationVerdict(msgs []message.Message) string {
 	return ""
 }
 
+func hasVerifierCommandEvidence(msgs []message.Message) bool {
+	for i := len(msgs) - 1; i >= 0; i-- {
+		for _, tr := range msgs[i].ToolResults() {
+			content := strings.ToLower(tr.Content)
+			if strings.Contains(content, "command run:") ||
+				strings.Contains(content, "command:") && strings.Contains(content, "output:") ||
+				strings.Contains(content, "re-run 2-3 commands") {
+				return true
+			}
+		}
+		if len(msgs)-i > 100 {
+			break
+		}
+	}
+	return false
+}
+
 func buildRuntimeSystemGuidance(
 	agentTools []fantasy.AgentTool,
 	isSubAgent bool,
@@ -399,6 +416,7 @@ func buildRuntimeSystemGuidance(
 	hasRecentInjectionSignal bool,
 	hasRecentVerifierRun bool,
 	verificationVerdict string,
+	hasVerifierEvidence bool,
 	nonInteractive bool,
 	briefMode bool,
 	isFirstTurn bool,
@@ -463,7 +481,11 @@ func buildRuntimeSystemGuidance(
 				case "partial":
 					b.WriteString("- Verification contract: latest verifier verdict is PARTIAL. Report verified scope and unresolved checks explicitly.\n")
 				case "pass":
-					b.WriteString("- Verification contract: latest verifier verdict is PASS. Spot-check key commands before final completion.\n")
+					if hasVerifierEvidence {
+						b.WriteString("- Verification contract: latest verifier verdict is PASS with command-run evidence. Spot-check key commands before final completion.\n")
+					} else {
+						b.WriteString("- Verification contract: latest verifier verdict is PASS but command-run evidence is missing. Rerun verifier with explicit command blocks before completion.\n")
+					}
 				default:
 					b.WriteString("- Verification contract: verifier run detected. If failures remain, fix and rerun verification before completion.\n")
 				}
@@ -625,6 +647,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		hasRecentPromptInjectionSignal(msgs),
 		hasRecentVerificationAgentRun(msgs),
 		recentVerificationVerdict(msgs),
+		hasVerifierCommandEvidence(msgs),
 		call.NonInteractive,
 		a.briefMode,
 		len(msgs) == 0,
