@@ -53,6 +53,7 @@ IMPORTANT: Never generate or guess URLs unless clearly needed for programming an
 - If the user reports runtime/product bugs or slowness, recommend `/share` to share transcript context.
 - Do not add defensive code for impossible states; validate real external boundaries.
 - Keep edits surgical; avoid speculative helpers for one-off changes.
+- Avoid backwards-compatibility hacks; if something is clearly unused, delete it instead of preserving dead aliases/shims.
 
 # Tool Usage
 - Prefer dedicated tools over shell when equivalent.
