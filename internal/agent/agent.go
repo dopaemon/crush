@@ -246,6 +246,26 @@ func hasRecentExactMatchEditFailure(msgs []message.Message) bool {
 	return false
 }
 
+func hasRecentRepeatedToolPattern(msgs []message.Message) bool {
+	counts := map[string]int{}
+	for i := len(msgs) - 1; i >= 0; i-- {
+		for _, tc := range msgs[i].ToolCalls() {
+			if tc.Name == "" {
+				continue
+			}
+			key := tc.Name + ":" + tc.Input
+			counts[key]++
+			if counts[key] >= 3 {
+				return true
+			}
+		}
+		if len(msgs)-i > 40 {
+			break
+		}
+	}
+	return false
+}
+
 func buildRuntimeSystemGuidance(
 	agentTools []fantasy.AgentTool,
 	isSubAgent bool,
@@ -255,6 +275,7 @@ func buildRuntimeSystemGuidance(
 	hasRecentHookBlockedCall bool,
 	hasRecentAuthBlockedCall bool,
 	hasRecentExactMatchFailure bool,
+	hasRecentRepeatedPattern bool,
 	nonInteractive bool,
 ) string {
 	toolset := map[string]struct{}{}
@@ -316,6 +337,9 @@ func buildRuntimeSystemGuidance(
 	}
 	if hasRecentExactMatchFailure {
 		b.WriteString("- Recent exact-match edit failure detected. Re-read the target file and retry with larger exact context (including indentation/whitespace).\n")
+	}
+	if hasRecentRepeatedPattern {
+		b.WriteString("- Repeated tool-call pattern detected. Change approach (narrow scope, gather fresh context, or use a different tool) instead of repeating identical calls.\n")
 	}
 	if nonInteractive {
 		b.WriteString("- This is a non-interactive run: avoid asking follow-up questions unless absolutely required to unblock execution.\n")
@@ -417,6 +441,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		hasRecentHookBlock(msgs),
 		hasRecentAuthBlock(msgs),
 		hasRecentExactMatchEditFailure(msgs),
+		hasRecentRepeatedToolPattern(msgs),
 		call.NonInteractive,
 	)
 
