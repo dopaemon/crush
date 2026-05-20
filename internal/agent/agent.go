@@ -141,6 +141,19 @@ type SessionAgentOptions struct {
 	Notify               pubsub.Publisher[notify.Notification]
 }
 
+func composeSystemPrompt(staticPart, dynamicPart string) string {
+	if staticPart == "" && dynamicPart == "" {
+		return ""
+	}
+	if staticPart == "" {
+		return dynamicPart
+	}
+	if dynamicPart == "" {
+		return staticPart
+	}
+	return staticPart + "\n\n" + dynamicPart
+}
+
 func lastDeniedToolFromHistory(msgs []message.Message) string {
 	for i := len(msgs) - 1; i >= 0; i-- {
 		for _, tr := range msgs[i].ToolResults() {
@@ -444,7 +457,10 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 	// Copy mutable fields under lock to avoid races with SetTools/SetModels.
 	agentTools := a.tools.Copy()
 	largeModel := a.largeModel.Get()
-	systemPrompt := a.systemPrompt.Get()
+	systemPrompt := composeSystemPrompt(a.staticSystemPrompt.Get(), a.dynamicSystemPrompt.Get())
+	if systemPrompt == "" {
+		systemPrompt = a.systemPrompt.Get()
+	}
 	promptPrefix := a.systemPromptPrefix.Get()
 	var instructions strings.Builder
 

@@ -24,3 +24,14 @@ func TestSetSystemPromptSplitsBoundary(t *testing.T) {
 	}
 }
 
+func TestComposeSystemPrompt(t *testing.T) {
+	if got := composeSystemPrompt("", "dyn"); got != "dyn" {
+		t.Fatalf("unexpected compose result: %q", got)
+	}
+	if got := composeSystemPrompt("sta", ""); got != "sta" {
+		t.Fatalf("unexpected compose result: %q", got)
+	}
+	if got := composeSystemPrompt("sta", "dyn"); got != "sta\n\ndyn" {
+		t.Fatalf("unexpected compose result: %q", got)
+	}
+}
