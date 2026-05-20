@@ -193,12 +193,29 @@ func hasRecentVerificationFailure(msgs []message.Message) bool {
 	return false
 }
 
+func hasRecentHookBlock(msgs []message.Message) bool {
+	for i := len(msgs) - 1; i >= 0; i-- {
+		for _, tr := range msgs[i].ToolResults() {
+			content := strings.ToLower(tr.Content)
+			if strings.Contains(content, "tool call blocked by hook") ||
+				strings.Contains(content, "turn halted by hook") {
+				return true
+			}
+		}
+		if len(msgs)-i > 30 {
+			break
+		}
+	}
+	return false
+}
+
 func buildRuntimeSystemGuidance(
 	agentTools []fantasy.AgentTool,
 	isSubAgent bool,
 	lastDeniedTool string,
 	needsVerificationContract bool,
 	hasRecentFailedChecks bool,
+	hasRecentHookBlockedCall bool,
 	nonInteractive bool,
 ) string {
 	toolset := map[string]struct{}{}
@@ -251,6 +268,9 @@ func buildRuntimeSystemGuidance(
 	}
 	if hasRecentFailedChecks {
 		b.WriteString("- Recent verification failure detected. Do not claim completion until failures are fixed or clearly scoped as unresolved.\n")
+	}
+	if hasRecentHookBlockedCall {
+		b.WriteString("- Recent hook block detected. Adapt the tool input/approach to satisfy hook policy instead of retrying unchanged.\n")
 	}
 	if nonInteractive {
 		b.WriteString("- This is a non-interactive run: avoid asking follow-up questions unless absolutely required to unblock execution.\n")
@@ -349,6 +369,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		lastDeniedToolFromHistory(msgs),
 		hasNonTrivialRecentImplementation(msgs),
 		hasRecentVerificationFailure(msgs),
+		hasRecentHookBlock(msgs),
 		call.NonInteractive,
 	)
 
