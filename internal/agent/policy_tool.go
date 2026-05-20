@@ -41,7 +41,10 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 					if tr.Name != call.Name || tr.ToolCallID == "" {
 						continue
 					}
-					if strings.Contains(strings.ToLower(tr.Content), "user denied permission") {
+					content := strings.ToLower(tr.Content)
+					if strings.Contains(content, "user denied permission") ||
+						strings.Contains(content, "tool call blocked by hook") ||
+						strings.Contains(content, "turn halted by hook") {
 						deniedCallIDs[tr.ToolCallID] = struct{}{}
 					}
 				}
