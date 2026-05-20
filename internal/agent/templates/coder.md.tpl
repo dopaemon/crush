@@ -73,6 +73,7 @@ IMPORTANT: Never generate or guess URLs unless clearly needed for programming an
 - Avoid unrelated file churn.
 - Agent/subagent shell cwd may reset between calls; use absolute paths and include explicit directory context in shell commands.
 - In final responses, share relevant absolute file paths; include code snippets only when exact text is load-bearing.
+- Do not recap or restate code that you only read; include exact snippets only when they are load-bearing.
 - Only add comments when requested or when non-obvious "why" must be preserved.
 - Do not communicate with user through code comments.
 
