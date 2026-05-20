@@ -118,6 +118,17 @@ func verifierContractSatisfied(msgs []message.Message) bool {
 	return true
 }
 
+func verifierContractNeedsFollowup(msgs []message.Message) bool {
+	v := recentVerificationVerdict(msgs)
+	if v == "fail" || v == "partial" {
+		return true
+	}
+	if v == "pass" && (!hasVerifierCommandEvidence(msgs) || hasVerifierDivergenceSignal(msgs)) {
+		return true
+	}
+	return false
+}
+
 func normalizeJSONInput(input string) string {
 	var v any
 	if err := json.Unmarshal([]byte(input), &v); err != nil {
@@ -223,6 +234,11 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 				!verifierContractSatisfied(msgs) &&
 				!isVerificationAgentCall(call.Input) {
 				return fantasy.NewTextErrorResponse("Verification contract active: run `agent` with `subagent_type=\"verification\"` before other delegation."), nil
+			}
+			if call.Name == AgentToolName &&
+				verifierContractNeedsFollowup(msgs) &&
+				!isVerificationAgentCall(call.Input) {
+				return fantasy.NewTextErrorResponse("Verification follow-up required: latest verifier verdict is not fully satisfied. Continue with verification subagent before other delegation."), nil
 			}
 			if call.Name == AgentToolName &&
 				isVerificationAgentCall(call.Input) &&

@@ -667,3 +667,23 @@ func TestDenyRetryPolicyTool_AllowsVerificationAgentCallWithRequiredContext(t *t
 	require.NoError(t, err)
 	require.Contains(t, resp.Content, "ok")
 }
+
+func TestDenyRetryPolicyTool_BlocksNonVerificationAgentCallWhenVerifierPartial(t *testing.T) {
+	inner := &mockAgentTool{name: AgentToolName}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{
+				{
+					Parts: []message.ContentPart{
+						message.ToolResult{Name: AgentToolName, Content: "Verifier verdict: PARTIAL"},
+					},
+				},
+			}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{Name: AgentToolName, Input: `{"prompt":"delegate other task"}`})
+	require.NoError(t, err)
+	require.Contains(t, resp.Content, "Verification follow-up required")
+}
