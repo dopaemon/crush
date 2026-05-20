@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"charm.land/fantasy"
@@ -283,6 +285,58 @@ func TestDenyRetryPolicyTool_AllowsEditAfterRecentView(t *testing.T) {
 	resp, err := wrapped.Run(ctx, fantasy.ToolCall{
 		Name:  tools.EditToolName,
 		Input: `{"file_path":"/tmp/a.go","old_string":"x","new_string":"y"}`,
+	})
+	require.NoError(t, err)
+	require.Contains(t, resp.Content, "ok")
+}
+
+func TestDenyRetryPolicyTool_BlocksWriteOverwriteWithoutRecentView(t *testing.T) {
+	tmpDir := t.TempDir()
+	target := filepath.Join(tmpDir, "a.go")
+	require.NoError(t, os.WriteFile(target, []byte("old"), 0o644))
+
+	inner := &mockAgentTool{name: tools.WriteToolName}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+		Name:  tools.WriteToolName,
+		Input: `{"file_path":"` + target + `","content":"new"}`,
+	})
+	require.NoError(t, err)
+	require.Contains(t, resp.Content, "Safe-overwrite policy")
+}
+
+func TestDenyRetryPolicyTool_AllowsWriteOverwriteAfterRecentView(t *testing.T) {
+	tmpDir := t.TempDir()
+	target := filepath.Join(tmpDir, "a.go")
+	require.NoError(t, os.WriteFile(target, []byte("old"), 0o644))
+
+	inner := &mockAgentTool{name: tools.WriteToolName}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{
+				{
+					Parts: []message.ContentPart{
+						message.ToolCall{
+							ID:    "v1",
+							Name:  tools.ViewToolName,
+							Input: `{"file_path":"` + target + `"}`,
+						},
+					},
+				},
+			}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+		Name:  tools.WriteToolName,
+		Input: `{"file_path":"` + target + `","content":"new"}`,
 	})
 	require.NoError(t, err)
 	require.Contains(t, resp.Content, "ok")

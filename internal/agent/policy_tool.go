@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"strings"
 
 	"charm.land/fantasy"
@@ -20,7 +21,7 @@ func toolFilePath(toolName, input string) string {
 		return ""
 	}
 	switch toolName {
-	case tools.ViewToolName, tools.EditToolName, tools.MultiEditToolName:
+	case tools.ViewToolName, tools.EditToolName, tools.MultiEditToolName, tools.WriteToolName:
 		return path
 	default:
 		return ""
@@ -121,6 +122,13 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 				path := toolFilePath(call.Name, call.Input)
 				if path != "" && !hasRecentViewForPath(msgs, path) {
 					return fantasy.NewTextErrorResponse("Read-before-edit policy: call view on this file before editing."), nil
+				}
+			case tools.WriteToolName:
+				path := toolFilePath(tools.WriteToolName, call.Input)
+				if path != "" {
+					if _, statErr := os.Stat(path); statErr == nil && !hasRecentViewForPath(msgs, path) {
+						return fantasy.NewTextErrorResponse("Safe-overwrite policy: view existing file before write overwrite."), nil
+					}
 				}
 			}
 		}
