@@ -1901,6 +1901,9 @@ func (m *UI) handleKeyPressMsg(msg tea.KeyPressMsg) tea.Cmd {
 				if len(value) == 0 && !message.ContainsTextAttachment(attachments) {
 					return nil
 				}
+				if handled, cmd := m.handleGoalCommand(value); handled {
+					return tea.Batch(cmd, m.loadPromptHistory())
+				}
 
 				m.randomizePlaceholders()
 				m.historyReset()
@@ -3190,6 +3193,61 @@ func (m *UI) sendMessage(content string, attachments ...message.Attachment) tea.
 		return nil
 	})
 	return tea.Batch(cmds...)
+}
+
+func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
+	trimmed := strings.TrimSpace(content)
+	if !strings.HasPrefix(trimmed, "/goal") {
+		return false, nil
+	}
+	args := strings.TrimSpace(strings.TrimPrefix(trimmed, "/goal"))
+	if args == "" {
+		return true, util.ReportInfo("Usage: /goal <objective> | /goal status | /goal clear")
+	}
+
+	if !m.hasSession() {
+		newSession, err := m.com.Workspace.CreateSession(context.Background(), "New Session")
+		if err != nil {
+			return true, util.ReportError(err)
+		}
+		m.session = &newSession
+	}
+
+	switch strings.ToLower(args) {
+	case "status":
+		if m.session.Goal == nil {
+			return true, util.ReportInfo("No active goal.")
+		}
+		return true, util.ReportInfo(fmt.Sprintf("Goal [%s]: %s", m.session.Goal.Status, m.session.Goal.Objective))
+	case "clear":
+		m.session.Goal = nil
+		updated, err := m.com.Workspace.SaveSession(context.Background(), *m.session)
+		if err != nil {
+			return true, util.ReportError(err)
+		}
+		m.session = &updated
+		return true, util.ReportInfo("Goal cleared.")
+	default:
+		now := time.Now().Unix()
+		if m.session.Goal != nil {
+			m.session.Goal.Objective = args
+			m.session.Goal.Status = session.GoalStatusActive
+			m.session.Goal.UpdatedAt = now
+		} else {
+			m.session.Goal = &session.Goal{
+				Objective: args,
+				Status:    session.GoalStatusActive,
+				CreatedAt: now,
+				UpdatedAt: now,
+			}
+		}
+		updated, err := m.com.Workspace.SaveSession(context.Background(), *m.session)
+		if err != nil {
+			return true, util.ReportError(err)
+		}
+		m.session = &updated
+		return true, util.ReportInfo("Goal updated.")
+	}
 }
 
 const cancelTimerDuration = 2 * time.Second

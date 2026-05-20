@@ -23,6 +23,17 @@ const (
 	TodoStatusCompleted  TodoStatus = "completed"
 )
 
+type GoalStatus string
+
+const (
+	GoalStatusActive        GoalStatus = "active"
+	GoalStatusPaused        GoalStatus = "paused"
+	GoalStatusBlocked       GoalStatus = "blocked"
+	GoalStatusUsageLimited  GoalStatus = "usageLimited"
+	GoalStatusBudgetLimited GoalStatus = "budgetLimited"
+	GoalStatusComplete      GoalStatus = "complete"
+)
+
 // HashID returns the XXH3 hash of a session ID (UUID) as a hex string.
 func HashID(id string) string {
 	h := xxh3.New()
@@ -34,6 +45,16 @@ type Todo struct {
 	Content    string     `json:"content"`
 	Status     TodoStatus `json:"status"`
 	ActiveForm string     `json:"active_form"`
+}
+
+type Goal struct {
+	Objective      string     `json:"objective"`
+	Status         GoalStatus `json:"status"`
+	TokenBudget    *int64     `json:"token_budget"`
+	TokensUsed     int64      `json:"tokens_used"`
+	TimeUsedSecond int64      `json:"time_used_seconds"`
+	CreatedAt      int64      `json:"created_at"`
+	UpdatedAt      int64      `json:"updated_at"`
 }
 
 // HasIncompleteTodos returns true if there are any non-completed todos.
@@ -56,6 +77,7 @@ type Session struct {
 	SummaryMessageID string
 	Cost             float64
 	Todos            []Todo
+	Goal             *Goal
 	CreatedAt        int64
 	UpdatedAt        int64
 }
@@ -195,6 +217,10 @@ func (s *service) Save(ctx context.Context, session Session) (Session, error) {
 			String: todosJSON,
 			Valid:  todosJSON != "",
 		},
+		Goal: sql.NullString{
+			String: marshalGoal(session.Goal),
+			Valid:  session.Goal != nil,
+		},
 	})
 	if err != nil {
 		return Session{}, err
@@ -242,6 +268,10 @@ func (s service) fromDBItem(item db.Session) Session {
 	if err != nil {
 		slog.Error("Failed to unmarshal todos", "session_id", item.ID, "error", err)
 	}
+	goal, err := unmarshalGoal(item.Goal.String)
+	if err != nil {
+		slog.Error("Failed to unmarshal goal", "session_id", item.ID, "error", err)
+	}
 	return Session{
 		ID:               item.ID,
 		ParentSessionID:  item.ParentSessionID.String,
@@ -252,6 +282,7 @@ func (s service) fromDBItem(item db.Session) Session {
 		SummaryMessageID: item.SummaryMessageID.String,
 		Cost:             item.Cost,
 		Todos:            todos,
+		Goal:             goal,
 		CreatedAt:        item.CreatedAt,
 		UpdatedAt:        item.UpdatedAt,
 	}
@@ -277,6 +308,28 @@ func unmarshalTodos(data string) ([]Todo, error) {
 		return []Todo{}, err
 	}
 	return todos, nil
+}
+
+func marshalGoal(goal *Goal) string {
+	if goal == nil {
+		return ""
+	}
+	data, err := json.Marshal(goal)
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
+func unmarshalGoal(data string) (*Goal, error) {
+	if data == "" {
+		return nil, nil
+	}
+	var goal Goal
+	if err := json.Unmarshal([]byte(data), &goal); err != nil {
+		return nil, err
+	}
+	return &goal, nil
 }
 
 func NewService(q *db.Queries, conn *sql.DB) Service {

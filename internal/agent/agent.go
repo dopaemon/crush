@@ -11,8 +11,8 @@ import (
 	"cmp"
 	"context"
 	_ "embed"
-	"encoding/json"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -33,9 +33,9 @@ import (
 	"charm.land/fantasy/providers/openrouter"
 	"charm.land/fantasy/providers/vercel"
 	"charm.land/lipgloss/v2"
-	agentprompt "github.com/charmbracelet/crush/internal/agent/prompt"
 	"github.com/charmbracelet/crush/internal/agent/hyper"
 	"github.com/charmbracelet/crush/internal/agent/notify"
+	agentprompt "github.com/charmbracelet/crush/internal/agent/prompt"
 	"github.com/charmbracelet/crush/internal/agent/tools"
 	"github.com/charmbracelet/crush/internal/agent/tools/mcp"
 	"github.com/charmbracelet/crush/internal/config"
@@ -49,7 +49,7 @@ import (
 )
 
 const (
-	DefaultSessionName = "Untitled Session"
+	DefaultSessionName    = "Untitled Session"
 	verificationAgentType = "verification"
 
 	// Constants for auto-summarization thresholds
@@ -110,13 +110,13 @@ type Model struct {
 }
 
 type sessionAgent struct {
-	largeModel         *csync.Value[Model]
-	smallModel         *csync.Value[Model]
-	systemPromptPrefix *csync.Value[string]
-	systemPrompt       *csync.Value[string]
-	staticSystemPrompt *csync.Value[string]
+	largeModel          *csync.Value[Model]
+	smallModel          *csync.Value[Model]
+	systemPromptPrefix  *csync.Value[string]
+	systemPrompt        *csync.Value[string]
+	staticSystemPrompt  *csync.Value[string]
 	dynamicSystemPrompt *csync.Value[string]
-	tools              *csync.Slice[fantasy.AgentTool]
+	tools               *csync.Slice[fantasy.AgentTool]
 
 	isSubAgent           bool
 	sessions             session.Service
@@ -574,6 +574,34 @@ func ensureToolCallPreamble(msg *message.Message, briefMode bool) {
 	msg.AppendContent("Starting with a quick check before making changes.")
 }
 
+func buildGoalContext(goal *session.Goal) string {
+	if goal == nil {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("<goal_context>\n")
+	b.WriteString("Continue working toward the active thread goal.\n\n")
+	b.WriteString("<objective>\n")
+	b.WriteString(strings.TrimSpace(goal.Objective))
+	b.WriteString("\n</objective>\n\n")
+	b.WriteString("Goal status: ")
+	b.WriteString(string(goal.Status))
+	b.WriteString("\n")
+	if goal.TokenBudget != nil {
+		b.WriteString("Token budget: ")
+		b.WriteString(strconv.FormatInt(*goal.TokenBudget, 10))
+		b.WriteString("\n")
+	}
+	b.WriteString("Tokens used: ")
+	b.WriteString(strconv.FormatInt(goal.TokensUsed, 10))
+	b.WriteString("\n")
+	b.WriteString("Time used seconds: ")
+	b.WriteString(strconv.FormatInt(goal.TimeUsedSecond, 10))
+	b.WriteString("\n")
+	b.WriteString("</goal_context>")
+	return b.String()
+}
+
 func NewSessionAgent(
 	opts SessionAgentOptions,
 ) SessionAgent {
@@ -706,6 +734,11 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		return nil, err
 	}
 
+	modelPrompt := call.Prompt
+	if goalContext := buildGoalContext(currentSession.Goal); goalContext != "" {
+		modelPrompt = goalContext + "\n\n" + call.Prompt
+	}
+
 	// Add the session to the context.
 	ctx = context.WithValue(ctx, tools.SessionIDContextKey, call.SessionID)
 
@@ -737,7 +770,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		maxOutputTokens = &call.MaxOutputTokens
 	}
 	result, err := agent.Stream(genCtx, fantasy.AgentStreamCall{
-		Prompt:           message.PromptWithTextAttachments(call.Prompt, call.Attachments),
+		Prompt:           message.PromptWithTextAttachments(modelPrompt, call.Attachments),
 		Files:            files,
 		Messages:         history,
 		ProviderOptions:  call.ProviderOptions,
