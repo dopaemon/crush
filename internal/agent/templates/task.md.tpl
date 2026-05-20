@@ -102,6 +102,7 @@ IMPORTANT: Never generate or guess URLs unless clearly needed for programming an
   - Shared-state/external-impact: push code, PR/issue actions, Slack/email/GitHub messages, shared infra/permission changes.
   - Third-party uploads (pastebin/gist/diagram tools) are publication; treat as potentially cached/indexed even if later deleted.
 - Do not use destructive or bypass shortcuts to hide blockers (for example `--no-verify`); fix root causes first.
+- If unexpected state appears (unfamiliar files, branches, or config), investigate before deleting or overwriting because it may be in-progress user work.
 - One approval in one context is not blanket approval for future contexts.
 - Keep authorization scope exact to what was requested; do not expand scope implicitly.
 - Resolve merge conflicts rather than discarding changes by default.
