@@ -480,6 +480,23 @@ func TestDenyRetryPolicyTool_AllowsNonRiskyBashCommand(t *testing.T) {
 	require.Contains(t, resp.Content, "ok")
 }
 
+func TestDenyRetryPolicyTool_BlocksBashWhenDedicatedToolShouldBeUsed(t *testing.T) {
+	inner := &mockAgentTool{name: tools.BashToolName}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+		Name:  tools.BashToolName,
+		Input: `{"command":"grep -RIn foo .","description":"search text"}`,
+	})
+	require.NoError(t, err)
+	require.Contains(t, strings.ToLower(resp.Content), "dedicated tools")
+}
+
 func TestDenyRetryPolicyTool_BlocksRiskyBashGitPush(t *testing.T) {
 	inner := &mockAgentTool{name: tools.BashToolName}
 	svc := &fakeMessageService{

@@ -94,6 +94,32 @@ func isRiskyBashCommand(cmd string) bool {
 	return false
 }
 
+func looksLikeDedicatedToolCommand(cmd string) bool {
+	if cmd == "" {
+		return false
+	}
+	trimmed := strings.TrimSpace(strings.ToLower(cmd))
+	// Mirror Claude-style "prefer dedicated tools over shell" as an active
+	// runtime guard for obviously file-search/read/edit shell patterns.
+	prefixes := []string{
+		"cat ",
+		"head ",
+		"tail ",
+		"sed ",
+		"awk ",
+		"find ",
+		"grep ",
+		"rg ",
+		"ls ",
+	}
+	for _, p := range prefixes {
+		if strings.HasPrefix(trimmed, p) {
+			return true
+		}
+	}
+	return false
+}
+
 func isVerificationAgentCall(input string) bool {
 	var payload map[string]any
 	if err := json.Unmarshal([]byte(input), &payload); err != nil {
@@ -299,8 +325,12 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 					}
 				}
 			case tools.BashToolName:
-				if isRiskyBashCommand(toolCommand(call.Name, call.Input)) {
+				cmd := toolCommand(call.Name, call.Input)
+				if isRiskyBashCommand(cmd) {
 					return fantasy.NewTextErrorResponse("Risky shell action blocked pending explicit user confirmation. Ask the user to confirm before running destructive commands."), nil
+				}
+				if looksLikeDedicatedToolCommand(cmd) {
+					return fantasy.NewTextErrorResponse("Use dedicated tools instead of bash for file read/search/edit operations (view/edit/write/glob/grep)."), nil
 				}
 			}
 		}
