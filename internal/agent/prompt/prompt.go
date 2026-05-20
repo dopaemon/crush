@@ -383,13 +383,22 @@ func renderToolGuidance(toolNames []string, isSubAgent bool) string {
 	lines := make([]string, 0, 12)
 	lines = append(lines, "- Session tool guidance is derived from allowed tools for this agent.")
 	if has("view") {
-		lines = append(lines, "- Read file contents with `view` before proposing edits.")
+		lines = append(lines, "- Read file contents with `view` instead of shell readers like `cat`, `head`, `tail`, or `sed`.")
 	}
 	if has("edit") || has("multiedit") || has("write") {
-		lines = append(lines, "- Prefer `edit`/`multiedit`/`write` for code changes instead of shell text replacement.")
+		lines = append(lines, "- Use `edit`/`multiedit` for modifications instead of shell text replacement (`sed`/`awk`).")
+		if has("write") {
+			lines = append(lines, "- Create files with `write` instead of shell redirection/heredoc hacks.")
+		}
 	}
 	if has("glob") || has("grep") || has("ls") {
 		lines = append(lines, "- Use `glob`/`grep`/`ls` for discovery before changing files.")
+		if has("glob") {
+			lines = append(lines, "- Prefer `glob` for file discovery instead of `find` when equivalent.")
+		}
+		if has("grep") {
+			lines = append(lines, "- Prefer `grep` tool for content search instead of shell `grep`/`rg` when equivalent.")
+		}
 	}
 	if has("bash") {
 		lines = append(lines, "- Use `bash` only for shell/system operations not covered by dedicated tools.")
