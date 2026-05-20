@@ -438,6 +438,23 @@ func buildRuntimeSystemGuidance(
 	return b.String()
 }
 
+func ensureToolCallPreamble(msg *message.Message, briefMode bool) {
+	if msg == nil {
+		return
+	}
+	if len(msg.ToolCalls()) > 0 {
+		return
+	}
+	if strings.TrimSpace(msg.Content().Text) != "" {
+		return
+	}
+	if briefMode {
+		msg.AppendContent("On it.")
+		return
+	}
+	msg.AppendContent("Starting with a quick check before making changes.")
+}
+
 func NewSessionAgent(
 	opts SessionAgentOptions,
 ) SessionAgent {
@@ -702,6 +719,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 			return a.messages.Update(genCtx, *currentAssistant)
 		},
 		OnToolInputStart: func(id string, toolName string) error {
+			ensureToolCallPreamble(currentAssistant, a.briefMode)
 			toolCall := message.ToolCall{
 				ID:               id,
 				Name:             toolName,

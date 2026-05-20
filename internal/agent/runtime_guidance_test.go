@@ -134,6 +134,25 @@ func TestBuildRuntimeSystemGuidance_FirstTurn(t *testing.T) {
 	require.True(t, strings.Contains(guidance, "one short sentence"))
 }
 
+func TestEnsureToolCallPreamble_AddsDefault(t *testing.T) {
+	msg := &message.Message{}
+	ensureToolCallPreamble(msg, false)
+	require.Contains(t, msg.Content().Text, "Starting with a quick check")
+}
+
+func TestEnsureToolCallPreamble_AddsBrief(t *testing.T) {
+	msg := &message.Message{}
+	ensureToolCallPreamble(msg, true)
+	require.Equal(t, "On it.", msg.Content().Text)
+}
+
+func TestEnsureToolCallPreamble_NoopWhenTextExists(t *testing.T) {
+	msg := &message.Message{}
+	msg.AppendContent("Already speaking")
+	ensureToolCallPreamble(msg, true)
+	require.Equal(t, "Already speaking", msg.Content().Text)
+}
+
 func TestHasRecentHookBlock(t *testing.T) {
 	msgs := []message.Message{
 		{
