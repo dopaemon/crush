@@ -141,6 +141,24 @@ func looksLikeInteractiveLoginCommand(cmd string) bool {
 	return false
 }
 
+func looksLikeShellFileWriteCommand(cmd string) bool {
+	if cmd == "" {
+		return false
+	}
+	trimmed := strings.TrimSpace(strings.ToLower(cmd))
+	if strings.Contains(trimmed, ">>") || strings.Contains(trimmed, " > ") || strings.HasSuffix(trimmed, ">") {
+		if strings.HasPrefix(trimmed, "echo ") ||
+			strings.HasPrefix(trimmed, "printf ") ||
+			strings.HasPrefix(trimmed, "cat ") {
+			return true
+		}
+	}
+	if strings.Contains(trimmed, "<<") && strings.HasPrefix(trimmed, "cat ") {
+		return true
+	}
+	return false
+}
+
 func isVerificationAgentCall(input string) bool {
 	var payload map[string]any
 	if err := json.Unmarshal([]byte(input), &payload); err != nil {
@@ -352,6 +370,9 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 				}
 				if looksLikeInteractiveLoginCommand(cmd) {
 					return fantasy.NewTextErrorResponse("Interactive login command detected. Ask the user to run `! <command>` in-session, then continue after credentials are available."), nil
+				}
+				if looksLikeShellFileWriteCommand(cmd) {
+					return fantasy.NewTextErrorResponse("Use `write` tool instead of shell redirection/heredoc for creating or overwriting files."), nil
 				}
 				if looksLikeDedicatedToolCommand(cmd) {
 					return fantasy.NewTextErrorResponse("Use dedicated tools instead of bash for file read/search/edit operations (view/edit/write/glob/grep)."), nil
