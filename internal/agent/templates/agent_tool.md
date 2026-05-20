@@ -10,3 +10,5 @@ Guidelines:
 - Explicitly state whether the subagent should do research-only or implement code changes.
 - Do not claim or summarize subagent findings before the subagent actually returns results.
 - If user asks for parallel subagents, issue multiple agent tool calls in one response.
+- Subagent results are returned to you (assistant), not shown directly to the user; provide a concise user-facing summary after completion.
+- Use foreground subagents when your next step depends on their output; use background only for truly independent parallel work.
