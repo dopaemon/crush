@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/crush/internal/message"
 	"github.com/charmbracelet/crush/internal/proto"
 	"github.com/charmbracelet/crush/internal/pubsub"
+	"github.com/charmbracelet/crush/internal/session"
 	"github.com/charmbracelet/crush/internal/skills"
 	"github.com/stretchr/testify/require"
 )
@@ -122,4 +123,59 @@ func TestNewClientWorkspace_SeedsSkillsCache(t *testing.T) {
 	got := skills.GetLatestStates()
 	require.Len(t, got, 1)
 	require.Equal(t, "seeded", got[0].Name)
+}
+
+func TestGoalProtoConversion(t *testing.T) {
+	t.Parallel()
+
+	budget := int64(1234)
+	g := &session.Goal{
+		Objective:      "finish parity",
+		Status:         session.GoalStatusActive,
+		TokenBudget:    &budget,
+		TokensUsed:     77,
+		TimeUsedSecond: 9,
+		CreatedAt:      1,
+		UpdatedAt:      2,
+	}
+
+	pg := goalToProto(g)
+	require.NotNil(t, pg)
+	require.Equal(t, "finish parity", pg.Objective)
+	require.Equal(t, "active", pg.Status)
+	require.NotNil(t, pg.TokenBudget)
+	require.Equal(t, int64(1234), *pg.TokenBudget)
+
+	rt := protoToGoal(pg)
+	require.NotNil(t, rt)
+	require.Equal(t, g.Objective, rt.Objective)
+	require.Equal(t, g.Status, rt.Status)
+	require.NotNil(t, rt.TokenBudget)
+	require.Equal(t, *g.TokenBudget, *rt.TokenBudget)
+	require.Equal(t, g.TokensUsed, rt.TokensUsed)
+	require.Equal(t, g.TimeUsedSecond, rt.TimeUsedSecond)
+	require.Equal(t, g.CreatedAt, rt.CreatedAt)
+	require.Equal(t, g.UpdatedAt, rt.UpdatedAt)
+}
+
+func TestTranslateEvent_GoalNotification(t *testing.T) {
+	t.Parallel()
+
+	w := NewClientWorkspace(nil, proto.Workspace{})
+	ev := pubsub.Event[proto.GoalNotification]{
+		Type: pubsub.UpdatedEvent,
+		Payload: proto.GoalNotification{
+			SessionID: "sess1",
+			Method:    "thread/goal/updated",
+			Goal:      &proto.Goal{Objective: "ship", Status: "active"},
+		},
+	}
+
+	out := w.translateEvent(ev)
+	got, ok := out.(pubsub.Event[proto.GoalNotification])
+	require.True(t, ok, "expected pubsub.Event[proto.GoalNotification], got %T", out)
+	require.Equal(t, "sess1", got.Payload.SessionID)
+	require.Equal(t, "thread/goal/updated", got.Payload.Method)
+	require.NotNil(t, got.Payload.Goal)
+	require.Equal(t, "ship", got.Payload.Goal.Objective)
 }
