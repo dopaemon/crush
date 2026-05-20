@@ -154,6 +154,18 @@ func composeSystemPrompt(staticPart, dynamicPart string) string {
 	return staticPart + "\n\n" + dynamicPart
 }
 
+func appendDynamicSection(base, section string) string {
+	base = strings.TrimSpace(base)
+	section = strings.TrimSpace(section)
+	if section == "" {
+		return base
+	}
+	if base == "" {
+		return section
+	}
+	return base + "\n\n" + section
+}
+
 func lastDeniedToolFromHistory(msgs []message.Message) string {
 	for i := len(msgs) - 1; i >= 0; i-- {
 		for _, tr := range msgs[i].ToolResults() {
@@ -461,6 +473,10 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 	if systemPrompt == "" {
 		systemPrompt = a.systemPrompt.Get()
 	}
+	staticPrompt, dynamicPrompt := agentprompt.SplitByDynamicBoundary(systemPrompt)
+	if staticPrompt == "" && dynamicPrompt == "" {
+		staticPrompt = systemPrompt
+	}
 	promptPrefix := a.systemPromptPrefix.Get()
 	var instructions strings.Builder
 
@@ -484,7 +500,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 	if err != nil {
 		return nil, fmt.Errorf("failed to get session messages: %w", err)
 	}
-	systemPrompt += "\n\n" + buildRuntimeSystemGuidance(
+	dynamicPrompt = appendDynamicSection(dynamicPrompt, buildRuntimeSystemGuidance(
 		agentTools,
 		a.isSubAgent,
 		lastDeniedToolFromHistory(msgs),
@@ -497,10 +513,11 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		hasRecentRiskyShellIntent(msgs),
 		hasRecentPromptInjectionSignal(msgs),
 		call.NonInteractive,
-	)
+	))
 	if s := instructions.String(); s != "" {
-		systemPrompt += "\n\n<mcp-instructions>\n" + s + "\n</mcp-instructions>"
+		dynamicPrompt = appendDynamicSection(dynamicPrompt, "<mcp-instructions>\n"+s+"\n</mcp-instructions>")
 	}
+	systemPrompt = composeSystemPrompt(staticPrompt, dynamicPrompt)
 	if len(agentTools) > 0 {
 		// Add Anthropic caching to the last tool.
 		agentTools[len(agentTools)-1].SetProviderOptions(a.getCacheControlOptions())

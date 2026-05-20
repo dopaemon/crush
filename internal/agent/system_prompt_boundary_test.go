@@ -35,3 +35,18 @@ func TestComposeSystemPrompt(t *testing.T) {
 		t.Fatalf("unexpected compose result: %q", got)
 	}
 }
+
+func TestAppendDynamicSection(t *testing.T) {
+	if got := appendDynamicSection("", "x"); got != "x" {
+		t.Fatalf("unexpected append result: %q", got)
+	}
+	if got := appendDynamicSection("a", ""); got != "a" {
+		t.Fatalf("unexpected append result: %q", got)
+	}
+	if got := appendDynamicSection("a", "b"); got != "a\n\nb" {
+		t.Fatalf("unexpected append result: %q", got)
+	}
+	if got := appendDynamicSection("a\n", "\nb\n"); got != "a\n\nb" {
+		t.Fatalf("unexpected append result with trim: %q", got)
+	}
+}
