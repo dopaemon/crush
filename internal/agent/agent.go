@@ -11,6 +11,7 @@ import (
 	"cmp"
 	"context"
 	_ "embed"
+	"encoding/json"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -338,6 +339,28 @@ func hasRecentPromptInjectionSignal(msgs []message.Message) bool {
 	return false
 }
 
+func hasRecentVerificationAgentRun(msgs []message.Message) bool {
+	for i := len(msgs) - 1; i >= 0; i-- {
+		for _, tc := range msgs[i].ToolCalls() {
+			if tc.Name != AgentToolName {
+				continue
+			}
+			var payload map[string]any
+			if err := json.Unmarshal([]byte(tc.Input), &payload); err != nil {
+				continue
+			}
+			raw, _ := payload["subagent_type"].(string)
+			if strings.EqualFold(strings.TrimSpace(raw), verificationAgentType) {
+				return true
+			}
+		}
+		if len(msgs)-i > 60 {
+			break
+		}
+	}
+	return false
+}
+
 func buildRuntimeSystemGuidance(
 	agentTools []fantasy.AgentTool,
 	isSubAgent bool,
@@ -350,6 +373,7 @@ func buildRuntimeSystemGuidance(
 	hasRecentRepeatedPattern bool,
 	hasRecentRiskyShell bool,
 	hasRecentInjectionSignal bool,
+	hasRecentVerifierRun bool,
 	nonInteractive bool,
 	briefMode bool,
 	isFirstTurn bool,
@@ -403,9 +427,13 @@ func buildRuntimeSystemGuidance(
 	if needsVerificationContract {
 		b.WriteString("- Non-trivial recent implementation detected. Before claiming completion, run independent verification commands and report exact outcomes.\n")
 		if has(AgentToolName) {
-			b.WriteString("- Verification contract: spawn `agent` with `subagent_type=\"")
-			b.WriteString(verificationAgentType)
-			b.WriteString("\"` to validate changed files before final completion.\n")
+			if !hasRecentVerifierRun {
+				b.WriteString("- Verification contract: no recent verifier run detected. Spawn `agent` with `subagent_type=\"")
+				b.WriteString(verificationAgentType)
+				b.WriteString("\"` and wait for verifier output before final completion.\n")
+			} else {
+				b.WriteString("- Verification contract: verifier run detected. If failures remain, fix and rerun verification before completion.\n")
+			}
 		}
 	}
 	if hasRecentFailedChecks {
@@ -561,6 +589,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		hasRecentRepeatedToolPattern(msgs),
 		hasRecentRiskyShellIntent(msgs),
 		hasRecentPromptInjectionSignal(msgs),
+		hasRecentVerificationAgentRun(msgs),
 		call.NonInteractive,
 		a.briefMode,
 		len(msgs) == 0,
