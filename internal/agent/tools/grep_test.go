@@ -35,6 +35,14 @@ func TestRegexCache(t *testing.T) {
 	}
 }
 
+func TestGrepDescription_IncludesSpecializedGuidance(t *testing.T) {
+	t.Parallel()
+	desc := grepDescription()
+	require.Contains(t, desc, "ALWAYS use this `grep` tool for search tasks")
+	require.Contains(t, desc, "literal_text=true")
+	require.Contains(t, desc, "delegate with `agent`")
+}
+
 func TestGlobToRegexCaching(t *testing.T) {
 	// Test that globToRegex uses pre-compiled regex
 	pattern1 := globToRegex("*.{js,ts}")
