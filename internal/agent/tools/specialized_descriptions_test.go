@@ -34,3 +34,10 @@ func TestViewDescription_IncludesReadSpecificGuidance(t *testing.T) {
 	require.Contains(t, desc, "Can read notebook files (`.ipynb`)")
 	require.Contains(t, desc, "for directories use `ls`")
 }
+
+func TestMultiEditDescription_IncludesSpecializedGuidance(t *testing.T) {
+	t.Parallel()
+	require.Contains(t, multieditDescription, "Read the target file first (`view`)")
+	require.Contains(t, multieditDescription, "never include view line-number prefixes")
+	require.Contains(t, multieditDescription, "Avoid adding emojis to files unless the user explicitly requests it")
+}
