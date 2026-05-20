@@ -209,6 +209,25 @@ func hasRecentHookBlock(msgs []message.Message) bool {
 	return false
 }
 
+func hasRecentAuthBlock(msgs []message.Message) bool {
+	for i := len(msgs) - 1; i >= 0; i-- {
+		for _, tr := range msgs[i].ToolResults() {
+			content := strings.ToLower(tr.Content)
+			if strings.Contains(content, "authentication required") ||
+				strings.Contains(content, "auth required") ||
+				strings.Contains(content, "please login") ||
+				strings.Contains(content, "not logged in") ||
+				strings.Contains(content, "unauthorized") {
+				return true
+			}
+		}
+		if len(msgs)-i > 30 {
+			break
+		}
+	}
+	return false
+}
+
 func buildRuntimeSystemGuidance(
 	agentTools []fantasy.AgentTool,
 	isSubAgent bool,
@@ -216,6 +235,7 @@ func buildRuntimeSystemGuidance(
 	needsVerificationContract bool,
 	hasRecentFailedChecks bool,
 	hasRecentHookBlockedCall bool,
+	hasRecentAuthBlockedCall bool,
 	nonInteractive bool,
 ) string {
 	toolset := map[string]struct{}{}
@@ -271,6 +291,9 @@ func buildRuntimeSystemGuidance(
 	}
 	if hasRecentHookBlockedCall {
 		b.WriteString("- Recent hook block detected. Adapt the tool input/approach to satisfy hook policy instead of retrying unchanged.\n")
+	}
+	if hasRecentAuthBlockedCall {
+		b.WriteString("- Recent auth/login block detected. Prefer giving the user an exact interactive login command to run, then continue once credentials are available.\n")
 	}
 	if nonInteractive {
 		b.WriteString("- This is a non-interactive run: avoid asking follow-up questions unless absolutely required to unblock execution.\n")
@@ -370,6 +393,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		hasNonTrivialRecentImplementation(msgs),
 		hasRecentVerificationFailure(msgs),
 		hasRecentHookBlock(msgs),
+		hasRecentAuthBlock(msgs),
 		call.NonInteractive,
 	)
 
