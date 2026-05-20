@@ -3202,7 +3202,7 @@ func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
 	}
 	args := strings.TrimSpace(strings.TrimPrefix(trimmed, "/goal"))
 	if args == "" {
-		return true, util.ReportInfo("Usage: /goal <objective> | /goal status | /goal clear")
+		return true, util.ReportInfo("Usage: /goal <objective> | /goal status | /goal clear | /goal status <active|paused|blocked|usageLimited|budgetLimited|complete> | /goal budget <tokens|clear>")
 	}
 
 	if !m.hasSession() {
@@ -3213,16 +3213,62 @@ func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
 		m.session = &newSession
 	}
 
-	switch strings.ToLower(args) {
+	goal, err := m.com.Workspace.GetSessionGoal(context.Background(), m.session.ID)
+	if err != nil {
+		return true, util.ReportError(err)
+	}
+	parts := strings.Fields(args)
+	if len(parts) == 0 {
+		return true, util.ReportInfo("Usage: /goal <objective> | /goal status | /goal clear")
+	}
+
+	switch strings.ToLower(parts[0]) {
 	case "status":
-		goal, err := m.com.Workspace.GetSessionGoal(context.Background(), m.session.ID)
-		if err != nil {
-			return true, util.ReportError(err)
-		}
 		if goal == nil {
 			return true, util.ReportInfo("No active goal.")
 		}
-		return true, util.ReportInfo(fmt.Sprintf("Goal [%s]: %s", goal.Status, goal.Objective))
+		if len(parts) >= 2 {
+			nextStatus, ok := parseGoalStatus(parts[1])
+			if !ok {
+				return true, util.ReportWarn("Invalid status. Use: active|paused|blocked|usageLimited|budgetLimited|complete")
+			}
+			goal.Status = nextStatus
+			goal.UpdatedAt = time.Now().Unix()
+			updated, setErr := m.com.Workspace.SetSessionGoal(context.Background(), m.session.ID, *goal)
+			if setErr != nil {
+				return true, util.ReportError(setErr)
+			}
+			m.session = &updated
+			return true, util.ReportInfo(fmt.Sprintf("Goal status set: %s", nextStatus))
+		}
+		budget := "none"
+		if goal.TokenBudget != nil {
+			budget = strconv.FormatInt(*goal.TokenBudget, 10)
+		}
+		return true, util.ReportInfo(fmt.Sprintf("Goal [%s] budget=%s used=%d time=%ds: %s", goal.Status, budget, goal.TokensUsed, goal.TimeUsedSecond, goal.Objective))
+	case "budget":
+		if goal == nil {
+			return true, util.ReportWarn("No active goal. Set objective first with /goal <objective>.")
+		}
+		if len(parts) < 2 {
+			return true, util.ReportInfo("Usage: /goal budget <tokens|clear>")
+		}
+		if strings.EqualFold(parts[1], "clear") {
+			goal.TokenBudget = nil
+		} else {
+			n, parseErr := strconv.ParseInt(parts[1], 10, 64)
+			if parseErr != nil || n <= 0 {
+				return true, util.ReportWarn("Budget must be a positive integer token count.")
+			}
+			goal.TokenBudget = &n
+		}
+		goal.UpdatedAt = time.Now().Unix()
+		updated, setErr := m.com.Workspace.SetSessionGoal(context.Background(), m.session.ID, *goal)
+		if setErr != nil {
+			return true, util.ReportError(setErr)
+		}
+		m.session = &updated
+		return true, util.ReportInfo("Goal budget updated.")
 	case "clear":
 		updated, err := m.com.Workspace.ClearSessionGoal(context.Background(), m.session.ID)
 		if err != nil {
@@ -3231,26 +3277,58 @@ func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
 		m.session = &updated
 		return true, util.ReportInfo("Goal cleared.")
 	default:
+		if nextStatus, ok := parseGoalStatus(parts[0]); ok {
+			if goal == nil {
+				return true, util.ReportWarn("No active goal. Set objective first with /goal <objective>.")
+			}
+			goal.Status = nextStatus
+			goal.UpdatedAt = time.Now().Unix()
+			updated, setErr := m.com.Workspace.SetSessionGoal(context.Background(), m.session.ID, *goal)
+			if setErr != nil {
+				return true, util.ReportError(setErr)
+			}
+			m.session = &updated
+			return true, util.ReportInfo(fmt.Sprintf("Goal status set: %s", nextStatus))
+		}
 		now := time.Now().Unix()
-		goal := session.Goal{
+		newGoal := session.Goal{
 			Objective: args,
 			Status:    session.GoalStatusActive,
 			UpdatedAt: now,
 		}
-		if m.session.Goal != nil {
-			goal.CreatedAt = m.session.Goal.CreatedAt
-			goal.TokenBudget = m.session.Goal.TokenBudget
-			goal.TokensUsed = m.session.Goal.TokensUsed
-			goal.TimeUsedSecond = m.session.Goal.TimeUsedSecond
+		if goal != nil {
+			newGoal.CreatedAt = goal.CreatedAt
+			newGoal.TokenBudget = goal.TokenBudget
+			newGoal.TokensUsed = goal.TokensUsed
+			newGoal.TimeUsedSecond = goal.TimeUsedSecond
 		} else {
-			goal.CreatedAt = now
+			newGoal.CreatedAt = now
 		}
-		updated, err := m.com.Workspace.SetSessionGoal(context.Background(), m.session.ID, goal)
+		updated, err := m.com.Workspace.SetSessionGoal(context.Background(), m.session.ID, newGoal)
 		if err != nil {
 			return true, util.ReportError(err)
 		}
 		m.session = &updated
 		return true, util.ReportInfo("Goal updated.")
+	}
+}
+
+func parseGoalStatus(input string) (session.GoalStatus, bool) {
+	switch strings.ToLower(strings.TrimSpace(input)) {
+	case "active":
+		return session.GoalStatusActive, true
+	case "paused":
+		return session.GoalStatusPaused, true
+	case "blocked":
+		return session.GoalStatusBlocked, true
+	case "usagelimited":
+		return session.GoalStatusUsageLimited, true
+	case "budgetlimited":
+		return session.GoalStatusBudgetLimited, true
+	case "complete":
+		return session.GoalStatusComplete, true
+	default:
+		return "", false
 	}
 }
 
