@@ -142,6 +142,7 @@ func sessionToProto(s session.Session) proto.Session {
 		CompletionTokens: s.CompletionTokens,
 		Cost:             s.Cost,
 		Todos:            todosToProto(s.Todos),
+		Goal:             goalToProto(s.Goal),
 		CreatedAt:        s.CreatedAt,
 		UpdatedAt:        s.UpdatedAt,
 	}
@@ -160,6 +161,21 @@ func todosToProto(todos []session.Todo) []proto.Todo {
 		}
 	}
 	return out
+}
+
+func goalToProto(goal *session.Goal) *proto.Goal {
+	if goal == nil {
+		return nil
+	}
+	return &proto.Goal{
+		Objective:       goal.Objective,
+		Status:          string(goal.Status),
+		TokenBudget:     goal.TokenBudget,
+		TokensUsed:      goal.TokensUsed,
+		TimeUsedSeconds: goal.TimeUsedSecond,
+		CreatedAt:       goal.CreatedAt,
+		UpdatedAt:       goal.UpdatedAt,
+	}
 }
 
 func fileToProto(f history.File) proto.File {

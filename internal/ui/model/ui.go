@@ -3215,13 +3215,16 @@ func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
 
 	switch strings.ToLower(args) {
 	case "status":
-		if m.session.Goal == nil {
+		goal, err := m.com.Workspace.GetSessionGoal(context.Background(), m.session.ID)
+		if err != nil {
+			return true, util.ReportError(err)
+		}
+		if goal == nil {
 			return true, util.ReportInfo("No active goal.")
 		}
-		return true, util.ReportInfo(fmt.Sprintf("Goal [%s]: %s", m.session.Goal.Status, m.session.Goal.Objective))
+		return true, util.ReportInfo(fmt.Sprintf("Goal [%s]: %s", goal.Status, goal.Objective))
 	case "clear":
-		m.session.Goal = nil
-		updated, err := m.com.Workspace.SaveSession(context.Background(), *m.session)
+		updated, err := m.com.Workspace.ClearSessionGoal(context.Background(), m.session.ID)
 		if err != nil {
 			return true, util.ReportError(err)
 		}
@@ -3229,19 +3232,20 @@ func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
 		return true, util.ReportInfo("Goal cleared.")
 	default:
 		now := time.Now().Unix()
-		if m.session.Goal != nil {
-			m.session.Goal.Objective = args
-			m.session.Goal.Status = session.GoalStatusActive
-			m.session.Goal.UpdatedAt = now
-		} else {
-			m.session.Goal = &session.Goal{
-				Objective: args,
-				Status:    session.GoalStatusActive,
-				CreatedAt: now,
-				UpdatedAt: now,
-			}
+		goal := session.Goal{
+			Objective: args,
+			Status:    session.GoalStatusActive,
+			UpdatedAt: now,
 		}
-		updated, err := m.com.Workspace.SaveSession(context.Background(), *m.session)
+		if m.session.Goal != nil {
+			goal.CreatedAt = m.session.Goal.CreatedAt
+			goal.TokenBudget = m.session.Goal.TokenBudget
+			goal.TokensUsed = m.session.Goal.TokensUsed
+			goal.TimeUsedSecond = m.session.Goal.TimeUsedSecond
+		} else {
+			goal.CreatedAt = now
+		}
+		updated, err := m.com.Workspace.SetSessionGoal(context.Background(), m.session.ID, goal)
 		if err != nil {
 			return true, util.ReportError(err)
 		}

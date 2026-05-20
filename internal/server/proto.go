@@ -459,6 +459,47 @@ func (c *controllerV1) handleDeleteWorkspaceSession(w http.ResponseWriter, r *ht
 	w.WriteHeader(http.StatusOK)
 }
 
+func (c *controllerV1) handleGetWorkspaceSessionGoal(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	sid := r.PathValue("sid")
+	goal, err := c.backend.GetSessionGoal(r.Context(), id, sid)
+	if err != nil {
+		c.handleError(w, r, err)
+		return
+	}
+	jsonEncode(w, goalToProto(goal))
+}
+
+func (c *controllerV1) handlePutWorkspaceSessionGoal(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	sid := r.PathValue("sid")
+
+	var goal session.Goal
+	if err := json.NewDecoder(r.Body).Decode(&goal); err != nil {
+		c.server.logError(r, "Failed to decode request", "error", err)
+		jsonError(w, http.StatusBadRequest, "failed to decode request")
+		return
+	}
+
+	sess, err := c.backend.SetSessionGoal(r.Context(), id, sid, goal)
+	if err != nil {
+		c.handleError(w, r, err)
+		return
+	}
+	jsonEncode(w, sessionToProto(sess))
+}
+
+func (c *controllerV1) handleDeleteWorkspaceSessionGoal(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	sid := r.PathValue("sid")
+	sess, err := c.backend.ClearSessionGoal(r.Context(), id, sid)
+	if err != nil {
+		c.handleError(w, r, err)
+		return
+	}
+	jsonEncode(w, sessionToProto(sess))
+}
+
 // handleGetWorkspaceSessionUserMessages returns user messages for a session.
 //
 //	@Summary		Get user messages for session

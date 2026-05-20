@@ -59,6 +59,32 @@ func (w *AppWorkspace) DeleteSession(ctx context.Context, sessionID string) erro
 	return w.app.Sessions.Delete(ctx, sessionID)
 }
 
+func (w *AppWorkspace) SetSessionGoal(ctx context.Context, sessionID string, goal session.Goal) (session.Session, error) {
+	sess, err := w.app.Sessions.Get(ctx, sessionID)
+	if err != nil {
+		return session.Session{}, err
+	}
+	sess.Goal = &goal
+	return w.app.Sessions.Save(ctx, sess)
+}
+
+func (w *AppWorkspace) GetSessionGoal(ctx context.Context, sessionID string) (*session.Goal, error) {
+	sess, err := w.app.Sessions.Get(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return sess.Goal, nil
+}
+
+func (w *AppWorkspace) ClearSessionGoal(ctx context.Context, sessionID string) (session.Session, error) {
+	sess, err := w.app.Sessions.Get(ctx, sessionID)
+	if err != nil {
+		return session.Session{}, err
+	}
+	sess.Goal = nil
+	return w.app.Sessions.Save(ctx, sess)
+}
+
 func (w *AppWorkspace) CreateAgentToolSessionID(messageID, toolCallID string) string {
 	return w.app.Sessions.CreateAgentToolSessionID(messageID, toolCallID)
 }

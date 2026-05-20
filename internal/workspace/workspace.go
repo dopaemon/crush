@@ -65,6 +65,9 @@ type Workspace interface {
 	ListSessions(ctx context.Context) ([]session.Session, error)
 	SaveSession(ctx context.Context, sess session.Session) (session.Session, error)
 	DeleteSession(ctx context.Context, sessionID string) error
+	SetSessionGoal(ctx context.Context, sessionID string, goal session.Goal) (session.Session, error)
+	GetSessionGoal(ctx context.Context, sessionID string) (*session.Goal, error)
+	ClearSessionGoal(ctx context.Context, sessionID string) (session.Session, error)
 	CreateAgentToolSessionID(messageID, toolCallID string) string
 	ParseAgentToolSessionID(sessionID string) (messageID string, toolCallID string, ok bool)
 

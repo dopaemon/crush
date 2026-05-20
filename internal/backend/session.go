@@ -111,6 +111,44 @@ func (b *Backend) DeleteSession(ctx context.Context, workspaceID, sessionID stri
 	return ws.Sessions.Delete(ctx, sessionID)
 }
 
+func (b *Backend) SetSessionGoal(ctx context.Context, workspaceID, sessionID string, goal session.Goal) (session.Session, error) {
+	ws, err := b.GetWorkspace(workspaceID)
+	if err != nil {
+		return session.Session{}, err
+	}
+	sess, err := ws.Sessions.Get(ctx, sessionID)
+	if err != nil {
+		return session.Session{}, err
+	}
+	sess.Goal = &goal
+	return ws.Sessions.Save(ctx, sess)
+}
+
+func (b *Backend) GetSessionGoal(ctx context.Context, workspaceID, sessionID string) (*session.Goal, error) {
+	ws, err := b.GetWorkspace(workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	sess, err := ws.Sessions.Get(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return sess.Goal, nil
+}
+
+func (b *Backend) ClearSessionGoal(ctx context.Context, workspaceID, sessionID string) (session.Session, error) {
+	ws, err := b.GetWorkspace(workspaceID)
+	if err != nil {
+		return session.Session{}, err
+	}
+	sess, err := ws.Sessions.Get(ctx, sessionID)
+	if err != nil {
+		return session.Session{}, err
+	}
+	sess.Goal = nil
+	return ws.Sessions.Save(ctx, sess)
+}
+
 // ListUserMessages returns user-role messages for a session.
 func (b *Backend) ListUserMessages(ctx context.Context, workspaceID, sessionID string) ([]message.Message, error) {
 	ws, err := b.GetWorkspace(workspaceID)

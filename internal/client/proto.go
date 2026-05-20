@@ -579,6 +579,54 @@ func (c *Client) DeleteSession(ctx context.Context, id string, sessionID string)
 	return nil
 }
 
+func (c *Client) GetSessionGoal(ctx context.Context, id string, sessionID string) (*proto.Goal, error) {
+	rsp, err := c.get(ctx, fmt.Sprintf("/workspaces/%s/sessions/%s/goal", id, sessionID), nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get session goal: %w", err)
+	}
+	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get session goal: status code %d", rsp.StatusCode)
+	}
+	var goal *proto.Goal
+	if err := json.NewDecoder(rsp.Body).Decode(&goal); err != nil && !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("failed to decode session goal: %w", err)
+	}
+	return goal, nil
+}
+
+func (c *Client) SetSessionGoal(ctx context.Context, id string, sessionID string, goal proto.Goal) (*proto.Session, error) {
+	rsp, err := c.put(ctx, fmt.Sprintf("/workspaces/%s/sessions/%s/goal", id, sessionID), nil, jsonBody(goal), http.Header{"Content-Type": []string{"application/json"}})
+	if err != nil {
+		return nil, fmt.Errorf("failed to set session goal: %w", err)
+	}
+	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to set session goal: status code %d", rsp.StatusCode)
+	}
+	var sess proto.Session
+	if err := json.NewDecoder(rsp.Body).Decode(&sess); err != nil {
+		return nil, fmt.Errorf("failed to decode session: %w", err)
+	}
+	return &sess, nil
+}
+
+func (c *Client) ClearSessionGoal(ctx context.Context, id string, sessionID string) (*proto.Session, error) {
+	rsp, err := c.delete(ctx, fmt.Sprintf("/workspaces/%s/sessions/%s/goal", id, sessionID), nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to clear session goal: %w", err)
+	}
+	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to clear session goal: status code %d", rsp.StatusCode)
+	}
+	var sess proto.Session
+	if err := json.NewDecoder(rsp.Body).Decode(&sess); err != nil {
+		return nil, fmt.Errorf("failed to decode session: %w", err)
+	}
+	return &sess, nil
+}
+
 // ListUserMessages retrieves user-role messages for a session as proto types.
 func (c *Client) ListUserMessages(ctx context.Context, id string, sessionID string) ([]proto.Message, error) {
 	rsp, err := c.get(ctx, fmt.Sprintf("/workspaces/%s/sessions/%s/messages/user", id, sessionID), nil, nil)

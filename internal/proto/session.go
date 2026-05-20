@@ -11,6 +11,7 @@ type Session struct {
 	SummaryMessageID string  `json:"summary_message_id"`
 	Cost             float64 `json:"cost"`
 	Todos            []Todo  `json:"todos,omitempty"`
+	Goal             *Goal   `json:"goal,omitempty"`
 	CreatedAt        int64   `json:"created_at"`
 	UpdatedAt        int64   `json:"updated_at"`
 }
@@ -20,4 +21,14 @@ type Todo struct {
 	Content    string `json:"content"`
 	Status     string `json:"status"`
 	ActiveForm string `json:"active_form"`
+}
+
+type Goal struct {
+	Objective       string `json:"objective"`
+	Status          string `json:"status"`
+	TokenBudget     *int64 `json:"token_budget,omitempty"`
+	TokensUsed      int64  `json:"tokens_used"`
+	TimeUsedSeconds int64  `json:"time_used_seconds"`
+	CreatedAt       int64  `json:"created_at"`
+	UpdatedAt       int64  `json:"updated_at"`
 }

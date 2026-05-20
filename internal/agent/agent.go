@@ -984,6 +984,17 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 	})
 
 	a.eventPromptResponded(call.SessionID, time.Since(startTime).Truncate(time.Second))
+	if currentSession.Goal != nil {
+		turnSecs := int64(time.Since(startTime).Seconds())
+		if turnSecs < 0 {
+			turnSecs = 0
+		}
+		currentSession.Goal.TimeUsedSecond += turnSecs
+		currentSession.Goal.UpdatedAt = time.Now().Unix()
+		if _, saveErr := a.sessions.Save(ctx, currentSession); saveErr != nil {
+			slog.Error("Failed to persist goal timing", "error", saveErr)
+		}
+	}
 
 	if err != nil {
 		isHyper := largeModel.ModelCfg.Provider == hyper.Name
@@ -1657,6 +1668,19 @@ func (a *sessionAgent) updateSessionUsage(model Model, session *session.Session,
 	session.Cost += cost
 	session.CompletionTokens = usage.OutputTokens
 	session.PromptTokens = usage.InputTokens + usage.CacheReadTokens
+	a.updateSessionGoalUsage(session, usage)
+}
+
+func (a *sessionAgent) updateSessionGoalUsage(sess *session.Session, usage fantasy.Usage) {
+	if sess.Goal == nil {
+		return
+	}
+	used := usage.InputTokens + usage.OutputTokens + usage.CacheCreationTokens + usage.CacheReadTokens
+	sess.Goal.TokensUsed += used
+	sess.Goal.UpdatedAt = time.Now().Unix()
+	if sess.Goal.TokenBudget != nil && sess.Goal.TokensUsed >= *sess.Goal.TokenBudget {
+		sess.Goal.Status = session.GoalStatusBudgetLimited
+	}
 }
 
 func (a *sessionAgent) Cancel(sessionID string) {

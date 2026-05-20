@@ -130,6 +130,30 @@ func (w *ClientWorkspace) DeleteSession(ctx context.Context, sessionID string) e
 	return w.client.DeleteSession(ctx, w.workspaceID(), sessionID)
 }
 
+func (w *ClientWorkspace) SetSessionGoal(ctx context.Context, sessionID string, goal session.Goal) (session.Session, error) {
+	saved, err := w.client.SetSessionGoal(ctx, w.workspaceID(), sessionID, *goalToProto(&goal))
+	if err != nil {
+		return session.Session{}, err
+	}
+	return protoToSession(*saved), nil
+}
+
+func (w *ClientWorkspace) GetSessionGoal(ctx context.Context, sessionID string) (*session.Goal, error) {
+	goal, err := w.client.GetSessionGoal(ctx, w.workspaceID(), sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return protoToGoal(goal), nil
+}
+
+func (w *ClientWorkspace) ClearSessionGoal(ctx context.Context, sessionID string) (session.Session, error) {
+	saved, err := w.client.ClearSessionGoal(ctx, w.workspaceID(), sessionID)
+	if err != nil {
+		return session.Session{}, err
+	}
+	return protoToSession(*saved), nil
+}
+
 func (w *ClientWorkspace) CreateAgentToolSessionID(messageID, toolCallID string) string {
 	return fmt.Sprintf("%s$$%s", messageID, toolCallID)
 }
@@ -694,6 +718,7 @@ func protoToSession(s proto.Session) session.Session {
 		CompletionTokens: s.CompletionTokens,
 		Cost:             s.Cost,
 		Todos:            protoToTodos(s.Todos),
+		Goal:             protoToGoal(s.Goal),
 		CreatedAt:        s.CreatedAt,
 		UpdatedAt:        s.UpdatedAt,
 	}
@@ -809,8 +834,39 @@ func sessionToProto(s session.Session) proto.Session {
 		CompletionTokens: s.CompletionTokens,
 		Cost:             s.Cost,
 		Todos:            todosToProto(s.Todos),
+		Goal:             goalToProto(s.Goal),
 		CreatedAt:        s.CreatedAt,
 		UpdatedAt:        s.UpdatedAt,
+	}
+}
+
+func protoToGoal(g *proto.Goal) *session.Goal {
+	if g == nil {
+		return nil
+	}
+	return &session.Goal{
+		Objective:      g.Objective,
+		Status:         session.GoalStatus(g.Status),
+		TokenBudget:    g.TokenBudget,
+		TokensUsed:     g.TokensUsed,
+		TimeUsedSecond: g.TimeUsedSeconds,
+		CreatedAt:      g.CreatedAt,
+		UpdatedAt:      g.UpdatedAt,
+	}
+}
+
+func goalToProto(g *session.Goal) *proto.Goal {
+	if g == nil {
+		return nil
+	}
+	return &proto.Goal{
+		Objective:       g.Objective,
+		Status:          string(g.Status),
+		TokenBudget:     g.TokenBudget,
+		TokensUsed:      g.TokensUsed,
+		TimeUsedSeconds: g.TimeUsedSecond,
+		CreatedAt:       g.CreatedAt,
+		UpdatedAt:       g.UpdatedAt,
 	}
 }
 
