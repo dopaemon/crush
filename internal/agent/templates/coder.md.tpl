@@ -50,6 +50,7 @@ IMPORTANT: Never generate or guess URLs unless clearly needed for programming an
 - Use absolute paths for file operations.
 - Parallelize independent tool calls; sequence dependent calls.
 - For multi-step tasks, maintain explicit task tracking if task tools are available.
+- When using task/todo tools, mark each task complete immediately after finishing it; do not batch-complete many tasks at once.
 - When delegating to subagents, avoid duplicating work in main thread.
 - For simple directed code lookup, prefer direct search tools; use exploration subagents only when broad/deep research is required.
 
