@@ -905,6 +905,7 @@ func TestDenyRetryPolicyTool_BlocksStructuredOutputAfterMaxRetries(t *testing.T)
 	svc := &fakeMessageService{
 		listFn: func(context.Context, string) ([]message.Message, error) {
 			return []message.Message{
+				{Role: message.User},
 				{
 					Parts: []message.ContentPart{
 						message.ToolCall{Name: "structured_output"},
@@ -920,4 +921,30 @@ func TestDenyRetryPolicyTool_BlocksStructuredOutputAfterMaxRetries(t *testing.T)
 	resp, err := wrapped.Run(ctx, fantasy.ToolCall{Name: "structured_output", Input: `{"schema":"{}"}`})
 	require.NoError(t, err)
 	require.Contains(t, resp.Content, "Structured output retry limit reached (3)")
+}
+
+func TestDenyRetryPolicyTool_AllowsStructuredOutputAfterNewUserTurn(t *testing.T) {
+	t.Setenv("MAX_STRUCTURED_OUTPUT_RETRIES", "3")
+
+	inner := &mockAgentTool{name: "structured_output"}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{
+				{Role: message.User},
+				{
+					Parts: []message.ContentPart{
+						message.ToolCall{Name: "structured_output"},
+						message.ToolCall{Name: "structured_output"},
+						message.ToolCall{Name: "structured_output"},
+					},
+				},
+				{Role: message.User},
+			}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{Name: "structured_output", Input: `{"schema":"{}"}`})
+	require.NoError(t, err)
+	require.Contains(t, resp.Content, "ok")
 }

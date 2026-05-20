@@ -261,6 +261,28 @@ func maxStructuredOutputRetries() int {
 	return n
 }
 
+func countToolCallsSinceLastUser(msgs []message.Message, toolName string) int {
+	if toolName == "" {
+		return 0
+	}
+	start := 0
+	for i := len(msgs) - 1; i >= 0; i-- {
+		if msgs[i].Role == message.User {
+			start = i
+			break
+		}
+	}
+	total := 0
+	for i := start; i < len(msgs); i++ {
+		for _, tc := range msgs[i].ToolCalls() {
+			if tc.Name == toolName {
+				total++
+			}
+		}
+	}
+	return total
+}
+
 func looksLikePromptInjection(content string) bool {
 	c := strings.ToLower(content)
 	return strings.Contains(c, "ignore previous instructions") ||
@@ -346,14 +368,7 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 				}
 			}
 			if call.Name == "structured_output" {
-				retries := 0
-				for i := len(msgs) - 1; i >= 0 && len(msgs)-i <= 200; i-- {
-					for _, tc := range msgs[i].ToolCalls() {
-						if tc.Name == "structured_output" {
-							retries++
-						}
-					}
-				}
+				retries := countToolCallsSinceLastUser(msgs, "structured_output")
 				maxRetries := maxStructuredOutputRetries()
 				if retries >= maxRetries {
 					return fantasy.NewTextErrorResponse(fmt.Sprintf("Structured output retry limit reached (%d). Stop retrying unchanged and adjust approach.", maxRetries)), nil
