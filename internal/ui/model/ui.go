@@ -279,6 +279,10 @@ type UI struct {
 		index    int
 		draft    string
 	}
+
+	// pendingGoalEcho stores the last /goal command text waiting for a UI
+	// response bubble when util.InfoMsg arrives.
+	pendingGoalEcho string
 }
 
 // New creates a new instance of the [UI] model.
@@ -878,6 +882,10 @@ func (m *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			slog.Error("Error reported", "error", msg.Msg)
 		}
 		m.status.SetInfoMsg(msg)
+		if m.pendingGoalEcho != "" {
+			m.appendLocalCommandResponse(m.pendingGoalEcho, msg.Msg)
+			m.pendingGoalEcho = ""
+		}
 		ttl := msg.TTL
 		if ttl <= 0 {
 			ttl = DefaultStatusTTL
@@ -1908,6 +1916,7 @@ func (m *UI) handleKeyPressMsg(msg tea.KeyPressMsg) tea.Cmd {
 					return nil
 				}
 				if handled, cmd := m.handleGoalCommand(value); handled {
+					m.pendingGoalEcho = value
 					return tea.Batch(cmd, m.loadPromptHistory())
 				}
 
@@ -3199,6 +3208,29 @@ func (m *UI) sendMessage(content string, attachments ...message.Attachment) tea.
 		return nil
 	})
 	return tea.Batch(cmds...)
+}
+
+func (m *UI) appendLocalCommandResponse(commandText, responseText string) {
+	now := time.Now().UnixNano()
+	userMsg := &message.Message{
+		ID:   fmt.Sprintf("local-user-%d", now),
+		Role: message.User,
+		Parts: []message.ContentPart{
+			message.TextContent{Text: commandText},
+		},
+	}
+	assistantMsg := &message.Message{
+		ID:   fmt.Sprintf("local-assistant-%d", now),
+		Role: message.Assistant,
+		Parts: []message.ContentPart{
+			message.TextContent{Text: responseText},
+		},
+	}
+
+	m.chat.AppendMessages(
+		chat.NewUserMessageItem(m.com.Styles, userMsg, m.attachments.Renderer()),
+		chat.NewAssistantMessageItem(m.com.Styles, assistantMsg),
+	)
 }
 
 func (m *UI) handleGoalCommand(content string) (bool, tea.Cmd) {
