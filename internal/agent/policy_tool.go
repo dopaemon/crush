@@ -18,6 +18,9 @@ var riskyBashPatterns = []string{
 	"git checkout --",
 	"git clean -fd",
 	"git clean -xdf",
+	"git rebase",
+	"git commit --amend",
+	"git push",
 	"git push --force",
 	"git push -f",
 }

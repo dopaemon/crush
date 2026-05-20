@@ -479,3 +479,37 @@ func TestDenyRetryPolicyTool_AllowsNonRiskyBashCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, resp.Content, "ok")
 }
+
+func TestDenyRetryPolicyTool_BlocksRiskyBashGitPush(t *testing.T) {
+	inner := &mockAgentTool{name: tools.BashToolName}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+		Name:  tools.BashToolName,
+		Input: `{"command":"git push origin main","description":"push"}`,
+	})
+	require.NoError(t, err)
+	require.Contains(t, resp.Content, "Risky shell action blocked")
+}
+
+func TestDenyRetryPolicyTool_BlocksRiskyBashGitCommitAmend(t *testing.T) {
+	inner := &mockAgentTool{name: tools.BashToolName}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+	resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+		Name:  tools.BashToolName,
+		Input: `{"command":"git commit --amend -m \"fix\"","description":"amend"}`,
+	})
+	require.NoError(t, err)
+	require.Contains(t, resp.Content, "Risky shell action blocked")
+}
