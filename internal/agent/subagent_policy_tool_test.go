@@ -25,3 +25,10 @@ func TestSubagentPolicyTool_AllowsOtherToolsInSubagent(t *testing.T) {
 	require.Contains(t, resp.Content, "ok")
 }
 
+func TestSubagentPolicyTool_BlocksAgenticFetchInSubagent(t *testing.T) {
+	inner := &mockAgentTool{name: tools.AgenticFetchToolName}
+	wrapped := newSubagentPolicyTool(inner, true)
+	resp, err := wrapped.Run(context.Background(), fantasy.ToolCall{Name: tools.AgenticFetchToolName})
+	require.NoError(t, err)
+	require.Contains(t, resp.Content, "do not re-delegate")
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"charm.land/fantasy"
+	"github.com/charmbracelet/crush/internal/agent/tools"
 )
 
 type subagentPolicyTool struct {
@@ -28,9 +29,8 @@ func (s *subagentPolicyTool) SetProviderOptions(opts fantasy.ProviderOptions) {
 }
 
 func (s *subagentPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (fantasy.ToolResponse, error) {
-	if s.isSubAgent && call.Name == AgentToolName {
-		return fantasy.NewTextErrorResponse("Subagent policy: do not re-delegate with agent tool from within a subagent turn."), nil
+	if s.isSubAgent && (call.Name == AgentToolName || call.Name == tools.AgenticFetchToolName) {
+		return fantasy.NewTextErrorResponse("Subagent policy: do not re-delegate from within a subagent turn."), nil
 	}
 	return s.inner.Run(ctx, call)
 }
-
