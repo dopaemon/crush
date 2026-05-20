@@ -361,6 +361,30 @@ func hasRecentVerificationAgentRun(msgs []message.Message) bool {
 	return false
 }
 
+func recentVerificationVerdict(msgs []message.Message) string {
+	for i := len(msgs) - 1; i >= 0; i-- {
+		for _, tr := range msgs[i].ToolResults() {
+			content := strings.ToLower(tr.Content)
+			switch {
+			case strings.Contains(content, "verifier verdict: fail"),
+				strings.Contains(content, "\nfail\n"),
+				strings.Contains(content, "verification failed"):
+				return "fail"
+			case strings.Contains(content, "verifier verdict: partial"),
+				strings.Contains(content, "partial verification"):
+				return "partial"
+			case strings.Contains(content, "verifier verdict: pass"),
+				strings.Contains(content, "verification passed"):
+				return "pass"
+			}
+		}
+		if len(msgs)-i > 80 {
+			break
+		}
+	}
+	return ""
+}
+
 func buildRuntimeSystemGuidance(
 	agentTools []fantasy.AgentTool,
 	isSubAgent bool,
@@ -374,6 +398,7 @@ func buildRuntimeSystemGuidance(
 	hasRecentRiskyShell bool,
 	hasRecentInjectionSignal bool,
 	hasRecentVerifierRun bool,
+	verificationVerdict string,
 	nonInteractive bool,
 	briefMode bool,
 	isFirstTurn bool,
@@ -432,7 +457,16 @@ func buildRuntimeSystemGuidance(
 				b.WriteString(verificationAgentType)
 				b.WriteString("\"` and wait for verifier output before final completion.\n")
 			} else {
-				b.WriteString("- Verification contract: verifier run detected. If failures remain, fix and rerun verification before completion.\n")
+				switch verificationVerdict {
+				case "fail":
+					b.WriteString("- Verification contract: latest verifier verdict is FAIL. Apply fixes, then rerun verifier until PASS before completion.\n")
+				case "partial":
+					b.WriteString("- Verification contract: latest verifier verdict is PARTIAL. Report verified scope and unresolved checks explicitly.\n")
+				case "pass":
+					b.WriteString("- Verification contract: latest verifier verdict is PASS. Spot-check key commands before final completion.\n")
+				default:
+					b.WriteString("- Verification contract: verifier run detected. If failures remain, fix and rerun verification before completion.\n")
+				}
 			}
 		}
 	}
@@ -590,6 +624,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 		hasRecentRiskyShellIntent(msgs),
 		hasRecentPromptInjectionSignal(msgs),
 		hasRecentVerificationAgentRun(msgs),
+		recentVerificationVerdict(msgs),
 		call.NonInteractive,
 		a.briefMode,
 		len(msgs) == 0,
