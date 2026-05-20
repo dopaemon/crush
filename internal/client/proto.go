@@ -631,6 +631,54 @@ func (c *Client) ClearSessionGoal(ctx context.Context, id string, sessionID stri
 	return &sess, nil
 }
 
+func (c *Client) ThreadGoalGet(ctx context.Context, id string, sessionID string) (*proto.ThreadGoalGetResponse, error) {
+	rsp, err := c.get(ctx, fmt.Sprintf("/workspaces/%s/thread/goal/get", id), url.Values{"session_id": []string{sessionID}}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get thread goal: %w", err)
+	}
+	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get thread goal: status code %d", rsp.StatusCode)
+	}
+	var out proto.ThreadGoalGetResponse
+	if err := json.NewDecoder(rsp.Body).Decode(&out); err != nil {
+		return nil, fmt.Errorf("failed to decode thread goal: %w", err)
+	}
+	return &out, nil
+}
+
+func (c *Client) ThreadGoalSet(ctx context.Context, id string, req proto.ThreadGoalSetRequest) (*proto.ThreadGoalSetResponse, error) {
+	rsp, err := c.post(ctx, fmt.Sprintf("/workspaces/%s/thread/goal/set", id), nil, jsonBody(req), http.Header{"Content-Type": []string{"application/json"}})
+	if err != nil {
+		return nil, fmt.Errorf("failed to set thread goal: %w", err)
+	}
+	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to set thread goal: status code %d", rsp.StatusCode)
+	}
+	var out proto.ThreadGoalSetResponse
+	if err := json.NewDecoder(rsp.Body).Decode(&out); err != nil {
+		return nil, fmt.Errorf("failed to decode thread goal set response: %w", err)
+	}
+	return &out, nil
+}
+
+func (c *Client) ThreadGoalClear(ctx context.Context, id string, req proto.ThreadGoalClearRequest) (*proto.ThreadGoalClearResponse, error) {
+	rsp, err := c.post(ctx, fmt.Sprintf("/workspaces/%s/thread/goal/clear", id), nil, jsonBody(req), http.Header{"Content-Type": []string{"application/json"}})
+	if err != nil {
+		return nil, fmt.Errorf("failed to clear thread goal: %w", err)
+	}
+	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to clear thread goal: status code %d", rsp.StatusCode)
+	}
+	var out proto.ThreadGoalClearResponse
+	if err := json.NewDecoder(rsp.Body).Decode(&out); err != nil {
+		return nil, fmt.Errorf("failed to decode thread goal clear response: %w", err)
+	}
+	return &out, nil
+}
+
 // ListUserMessages retrieves user-role messages for a session as proto types.
 func (c *Client) ListUserMessages(ctx context.Context, id string, sessionID string) ([]proto.Message, error) {
 	rsp, err := c.get(ctx, fmt.Sprintf("/workspaces/%s/sessions/%s/messages/user", id, sessionID), nil, nil)

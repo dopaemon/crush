@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/charmbracelet/crush/internal/backend"
 	"github.com/charmbracelet/crush/internal/proto"
@@ -537,6 +539,115 @@ func (c *controllerV1) handleDeleteWorkspaceSessionGoal(w http.ResponseWriter, r
 		return
 	}
 	jsonEncode(w, sessionToProto(sess))
+}
+
+func (c *controllerV1) handleGetWorkspaceThreadGoal(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	sid := r.URL.Query().Get("session_id")
+	if sid == "" {
+		jsonError(w, http.StatusBadRequest, "session_id is required")
+		return
+	}
+	goal, err := c.backend.GetSessionGoal(r.Context(), id, sid)
+	if err != nil {
+		c.handleError(w, r, err)
+		return
+	}
+	jsonEncode(w, proto.ThreadGoalGetResponse{Goal: goalToProto(goal)})
+}
+
+func (c *controllerV1) handlePostWorkspaceThreadGoalSet(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req proto.ThreadGoalSetRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		c.server.logError(r, "Failed to decode request", "error", err)
+		jsonError(w, http.StatusBadRequest, "failed to decode request")
+		return
+	}
+	if req.SessionID == "" {
+		jsonError(w, http.StatusBadRequest, "session_id is required")
+		return
+	}
+	current, err := c.backend.GetSessionGoal(r.Context(), id, req.SessionID)
+	if err != nil {
+		c.handleError(w, r, err)
+		return
+	}
+	now := time.Now().Unix()
+	goal := session.Goal{
+		Objective: req.Objective,
+		Status:    session.GoalStatusActive,
+		UpdatedAt: now,
+	}
+	if req.Status != nil {
+		status, ok := parseServerGoalStatus(*req.Status)
+		if !ok {
+			jsonError(w, http.StatusBadRequest, "invalid status")
+			return
+		}
+		goal.Status = status
+	}
+	if current != nil {
+		goal.CreatedAt = current.CreatedAt
+		goal.TokensUsed = current.TokensUsed
+		goal.TimeUsedSecond = current.TimeUsedSecond
+		goal.TokenBudget = current.TokenBudget
+	} else {
+		goal.CreatedAt = now
+	}
+	if req.TokenBudget != nil {
+		goal.TokenBudget = req.TokenBudget
+	}
+	updated, err := c.backend.SetSessionGoal(r.Context(), id, req.SessionID, goal)
+	if err != nil {
+		c.handleError(w, r, err)
+		return
+	}
+	jsonEncode(w, proto.ThreadGoalSetResponse{Goal: goalToProto(updated.Goal)})
+}
+
+func (c *controllerV1) handlePostWorkspaceThreadGoalClear(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req proto.ThreadGoalClearRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		c.server.logError(r, "Failed to decode request", "error", err)
+		jsonError(w, http.StatusBadRequest, "failed to decode request")
+		return
+	}
+	if req.SessionID == "" {
+		jsonError(w, http.StatusBadRequest, "session_id is required")
+		return
+	}
+	before, err := c.backend.GetSessionGoal(r.Context(), id, req.SessionID)
+	if err != nil {
+		c.handleError(w, r, err)
+		return
+	}
+	_, err = c.backend.ClearSessionGoal(r.Context(), id, req.SessionID)
+	if err != nil {
+		c.handleError(w, r, err)
+		return
+	}
+	jsonEncode(w, proto.ThreadGoalClearResponse{Cleared: before != nil})
+}
+
+func parseServerGoalStatus(input string) (session.GoalStatus, bool) {
+	switch strings.ToLower(strings.TrimSpace(input)) {
+	case "active":
+		return session.GoalStatusActive, true
+	case "paused":
+		return session.GoalStatusPaused, true
+	case "blocked":
+		return session.GoalStatusBlocked, true
+	case "usagelimited":
+		return session.GoalStatusUsageLimited, true
+	case "budgetlimited":
+		return session.GoalStatusBudgetLimited, true
+	case "complete":
+		return session.GoalStatusComplete, true
+	default:
+		return "", false
+	}
 }
 
 // handleGetWorkspaceSessionUserMessages returns user messages for a session.

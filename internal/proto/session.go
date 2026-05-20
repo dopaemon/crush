@@ -38,3 +38,26 @@ type GoalNotification struct {
 	Method    string `json:"method"`
 	Goal      *Goal  `json:"goal,omitempty"`
 }
+
+type ThreadGoalSetRequest struct {
+	SessionID   string  `json:"session_id"`
+	Objective   string  `json:"objective"`
+	Status      *string `json:"status,omitempty"`
+	TokenBudget *int64  `json:"token_budget,omitempty"`
+}
+
+type ThreadGoalSetResponse struct {
+	Goal *Goal `json:"goal"`
+}
+
+type ThreadGoalGetResponse struct {
+	Goal *Goal `json:"goal"`
+}
+
+type ThreadGoalClearRequest struct {
+	SessionID string `json:"session_id"`
+}
+
+type ThreadGoalClearResponse struct {
+	Cleared bool `json:"cleared"`
+}
