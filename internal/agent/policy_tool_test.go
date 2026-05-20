@@ -480,6 +480,33 @@ func TestDenyRetryPolicyTool_AllowsNonRiskyBashCommand(t *testing.T) {
 	require.Contains(t, resp.Content, "ok")
 }
 
+func TestDenyRetryPolicyTool_AllowsOperationalBashCommands(t *testing.T) {
+	cases := []string{
+		"git status",
+		"go test ./...",
+		"npm test",
+		"python -V",
+	}
+	for _, cmd := range cases {
+		t.Run(cmd, func(t *testing.T) {
+			inner := &mockAgentTool{name: tools.BashToolName}
+			svc := &fakeMessageService{
+				listFn: func(context.Context, string) ([]message.Message, error) {
+					return []message.Message{}, nil
+				},
+			}
+			wrapped := newDenyRetryPolicyTool(inner, svc)
+			ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+			resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+				Name:  tools.BashToolName,
+				Input: "{\"command\":\"" + cmd + "\",\"description\":\"operational command\"}",
+			})
+			require.NoError(t, err)
+			require.Contains(t, resp.Content, "ok")
+		})
+	}
+}
+
 func TestDenyRetryPolicyTool_BlocksBashWhenDedicatedToolShouldBeUsed(t *testing.T) {
 	inner := &mockAgentTool{name: tools.BashToolName}
 	svc := &fakeMessageService{
