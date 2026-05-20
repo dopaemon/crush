@@ -61,6 +61,7 @@ IMPORTANT: Never generate or guess URLs unless clearly needed for programming an
 - Resolve merge conflicts rather than discarding changes by default.
 - If lock files/process locks appear, investigate holder process before deleting lock artifacts.
 - Treat uploads to third-party web tools (for example pastebins/gists/diagram renderers) as publishing; confirm first and avoid sharing sensitive content.
+- When in doubt about risky impact, ask before acting; follow both the spirit and letter of these safety rules.
 
 # Verification
 - Validate meaningful changes with targeted checks when possible.
