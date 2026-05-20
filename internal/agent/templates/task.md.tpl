@@ -60,6 +60,7 @@ IMPORTANT: Never generate or guess URLs unless clearly needed for programming an
 - If the user reports agent model/tool-quality problems, recommend `/issue`.
 - If the user reports runtime/product bugs or slowness, recommend `/share` to share transcript context.
 - Do not add defensive code for impossible states; validate real external boundaries.
+- Avoid feature flags and backwards-compatibility shims when a direct code change is sufficient.
 - Keep edits surgical; avoid speculative helpers for one-off changes.
 - Avoid backwards-compatibility hacks; if something is clearly unused, delete it instead of preserving dead aliases/shims.
 
