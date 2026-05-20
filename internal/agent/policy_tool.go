@@ -14,14 +14,23 @@ import (
 var riskyBashPatterns = []string{
 	"rm -rf",
 	"rm -fr",
+	"kill -9",
+	"pkill -9",
 	"git reset --hard",
 	"git checkout --",
+	"git checkout -f",
+	"git restore --source",
+	"git branch -d",
+	"git branch -D",
 	"git clean -fd",
+	"git clean -f",
 	"git clean -xdf",
 	"git rebase",
 	"git commit --amend",
+	"--no-verify",
 	"git push",
 	"git push --force",
+	"git push --force-with-lease",
 	"git push -f",
 }
 

@@ -514,6 +514,36 @@ func TestDenyRetryPolicyTool_BlocksRiskyBashGitCommitAmend(t *testing.T) {
 	require.Contains(t, resp.Content, "Risky shell action blocked")
 }
 
+func TestDenyRetryPolicyTool_BlocksAdditionalRiskyBashPatterns(t *testing.T) {
+	inner := &mockAgentTool{name: tools.BashToolName}
+	svc := &fakeMessageService{
+		listFn: func(context.Context, string) ([]message.Message, error) {
+			return []message.Message{}, nil
+		},
+	}
+	wrapped := newDenyRetryPolicyTool(inner, svc)
+	ctx := context.WithValue(context.Background(), tools.SessionIDContextKey, "s1")
+
+	riskyCmds := []string{
+		"git push --force-with-lease origin main",
+		"git checkout -f feature/branch",
+		"git branch -D old-branch",
+		"git commit --no-verify -m wip",
+		"git clean -f",
+	}
+
+	for _, cmd := range riskyCmds {
+		t.Run(cmd, func(t *testing.T) {
+			resp, err := wrapped.Run(ctx, fantasy.ToolCall{
+				Name:  tools.BashToolName,
+				Input: `{"command":"` + cmd + `","description":"risky"}`,
+			})
+			require.NoError(t, err)
+			require.Contains(t, resp.Content, "Risky shell action blocked")
+		})
+	}
+}
+
 func TestDenyRetryPolicyTool_BlocksNonVerificationAgentCallWhenVerifierRequired(t *testing.T) {
 	inner := &mockAgentTool{name: AgentToolName}
 	svc := &fakeMessageService{
