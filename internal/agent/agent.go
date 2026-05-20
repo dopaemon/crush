@@ -498,6 +498,7 @@ func buildRuntimeSystemGuidance(
 					b.WriteString("- Verification contract: latest verifier verdict is FAIL. Apply fixes, then rerun verifier until PASS before completion.\n")
 				case "partial":
 					b.WriteString("- Verification contract: latest verifier verdict is PARTIAL. Report verified scope and unresolved checks explicitly.\n")
+					b.WriteString("- Do not self-assign PARTIAL/PASS/FAIL outcomes; only the verification subagent assigns verifier verdicts.\n")
 				case "pass":
 					if hasVerifierDivergence {
 						b.WriteString("- Verification contract: verifier divergence detected. Resume verifier with specific mismatches and rerun before completion.\n")
