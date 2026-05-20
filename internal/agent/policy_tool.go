@@ -61,6 +61,14 @@ func sameToolInput(a, b string) bool {
 	return normalizeJSONInput(a) == normalizeJSONInput(b)
 }
 
+func looksLikePromptInjection(content string) bool {
+	c := strings.ToLower(content)
+	return strings.Contains(c, "ignore previous instructions") ||
+		strings.Contains(c, "disregard all prior instructions") ||
+		(strings.Contains(c, "system prompt") && strings.Contains(c, "reveal")) ||
+		(strings.Contains(c, "you are now") && strings.Contains(c, "assistant"))
+}
+
 type denyRetryPolicyTool struct {
 	inner    fantasy.AgentTool
 	messages message.Service
@@ -98,6 +106,10 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 					if strings.Contains(content, "user denied permission") ||
 						strings.Contains(content, "tool call blocked by hook") ||
 						strings.Contains(content, "turn halted by hook") {
+						deniedCallIDs[tr.ToolCallID] = struct{}{}
+						continue
+					}
+					if looksLikePromptInjection(content) {
 						deniedCallIDs[tr.ToolCallID] = struct{}{}
 						continue
 					}
