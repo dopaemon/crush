@@ -486,6 +486,8 @@ func TestDenyRetryPolicyTool_AllowsOperationalBashCommands(t *testing.T) {
 		"go test ./...",
 		"npm test",
 		"python -V",
+		"go test ./... 2>/tmp/test.err",
+		"go test ./... 1>/tmp/test.out",
 	}
 	for _, cmd := range cases {
 		t.Run(cmd, func(t *testing.T) {
