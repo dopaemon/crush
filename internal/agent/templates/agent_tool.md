@@ -1,1 +1,8 @@
-Launch a new agent that has access to the following tools: glob, grep, ls, view. When you are searching for a keyword or file and are not confident that you will find the right match on the first try, use the agent tool to perform the search for you.
+Use the agent tool for independent side tasks that benefit from parallelism or context isolation.
+
+Guidelines:
+- Prefer direct local tools for simple, targeted lookups.
+- Delegate broader exploration, long-running searches, or bounded implementation chunks.
+- Do not duplicate delegated work in the main thread.
+- If multiple delegated tasks are independent, run them in parallel.
+- Keep delegated prompts concrete: objective, scope, expected output.
