@@ -106,6 +106,10 @@ func looksLikeDedicatedToolCommand(cmd string) bool {
 			trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "command "))
 			changed = true
 		}
+		if strings.HasPrefix(trimmed, "env ") {
+			trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "env "))
+			changed = true
+		}
 		parts := strings.Fields(trimmed)
 		if len(parts) > 0 && strings.Contains(parts[0], "=") && !strings.HasPrefix(parts[0], "=") && !strings.HasSuffix(parts[0], "=") {
 			trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, parts[0]))
