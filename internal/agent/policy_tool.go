@@ -35,6 +35,7 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 	if sessionID != "" {
 		msgs, err := d.messages.List(ctx, sessionID)
 		if err == nil {
+			recentFailedIdenticalCalls := 0
 			deniedCallIDs := map[string]struct{}{}
 			for i := len(msgs) - 1; i >= 0 && len(msgs)-i <= 30; i-- {
 				for _, tr := range msgs[i].ToolResults() {
@@ -53,6 +54,9 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 							(strings.Contains(content, "exact") && strings.Contains(content, "match") && strings.Contains(content, "fail"))) {
 						deniedCallIDs[tr.ToolCallID] = struct{}{}
 					}
+					if tr.IsError {
+						deniedCallIDs[tr.ToolCallID] = struct{}{}
+					}
 				}
 			}
 			if len(deniedCallIDs) > 0 {
@@ -66,9 +70,15 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 						}
 						// Block only identical retries of denied calls.
 						if tc.Input == call.Input {
-							return fantasy.NewTextErrorResponse("Previous identical call was denied by user. Use a different approach or clarify intent before retrying."), nil
+							recentFailedIdenticalCalls++
+							if recentFailedIdenticalCalls >= 2 {
+								return fantasy.NewTextErrorResponse("Repeated identical failed call detected. Change approach (different input/tool) instead of retrying unchanged."), nil
+							}
 						}
 					}
+				}
+				if recentFailedIdenticalCalls == 1 {
+					return fantasy.NewTextErrorResponse("Previous identical call was denied or failed. Use a different approach or clarify intent before retrying."), nil
 				}
 			}
 		}
