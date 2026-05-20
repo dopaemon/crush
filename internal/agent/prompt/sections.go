@@ -42,3 +42,8 @@ func (c *sectionCache) set(name, value string) {
 	c.data[name] = value
 }
 
+func (c *sectionCache) clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.data = make(map[string]string)
+}

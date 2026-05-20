@@ -11,5 +11,8 @@ func TestSectionCache(t *testing.T) {
 	if v, ok := c.get("x"); !ok || v != "y" {
 		t.Fatalf("expected cached value")
 	}
+	c.clear()
+	if _, ok := c.get("x"); ok {
+		t.Fatalf("expected cache to be cleared")
+	}
 }
-

@@ -96,6 +96,14 @@ func NewPrompt(name, promptTemplate string, opts ...Option) (*Prompt, error) {
 	return p, nil
 }
 
+// ClearSectionCache resets memoized prompt sections.
+// Useful after external state changes that should invalidate cached sections.
+func (p *Prompt) ClearSectionCache() {
+	if p.sections != nil {
+		p.sections.clear()
+	}
+}
+
 func (p *Prompt) Build(ctx context.Context, provider, model string, store *config.ConfigStore) (string, error) {
 	t, err := template.New(p.name).Parse(p.template)
 	if err != nil {
