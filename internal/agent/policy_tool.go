@@ -45,6 +45,22 @@ func hasRecentViewForPath(msgs []message.Message, path string) bool {
 	return false
 }
 
+func normalizeJSONInput(input string) string {
+	var v any
+	if err := json.Unmarshal([]byte(input), &v); err != nil {
+		return input
+	}
+	normalized, err := json.Marshal(v)
+	if err != nil {
+		return input
+	}
+	return string(normalized)
+}
+
+func sameToolInput(a, b string) bool {
+	return normalizeJSONInput(a) == normalizeJSONInput(b)
+}
+
 type denyRetryPolicyTool struct {
 	inner    fantasy.AgentTool
 	messages message.Service
@@ -104,8 +120,8 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 						if _, denied := deniedCallIDs[tc.ID]; !denied {
 							continue
 						}
-						// Block only identical retries of denied calls.
-						if tc.Input == call.Input {
+						// Block only semantically identical retries of denied calls.
+						if sameToolInput(tc.Input, call.Input) {
 							recentFailedIdenticalCalls++
 							if recentFailedIdenticalCalls >= 2 {
 								return fantasy.NewTextErrorResponse("Repeated identical failed call detected. Change approach (different input/tool) instead of retrying unchanged."), nil
