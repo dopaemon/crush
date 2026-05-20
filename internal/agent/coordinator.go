@@ -582,6 +582,12 @@ func (c *coordinator) buildTools(ctx context.Context, agent config.Agent, isSubA
 	// itself is still wrapped from the coder's side.
 	filteredTools = wrapToolsWithHooks(filteredTools, hookRunner, isSubAgent)
 
+	// Wrap tools with deny-retry policy enforcement so identical retries
+	// after explicit user denial get redirected toward alternative paths.
+	for i, tool := range filteredTools {
+		filteredTools[i] = newDenyRetryPolicyTool(tool, c.messages)
+	}
+
 	return filteredTools, nil
 }
 
