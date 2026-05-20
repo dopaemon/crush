@@ -47,3 +47,9 @@ func TestWriteToolWritesEmptyNewFile(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "", string(b))
 }
+
+func TestWriteToolDescription_IncludesDocAndEmojiGuards(t *testing.T) {
+	t.Parallel()
+	require.Contains(t, writeDescription, "NEVER create documentation files (`*.md`) or README files unless the user explicitly requests them")
+	require.Contains(t, writeDescription, "Avoid writing emojis unless the user explicitly requests them")
+}
