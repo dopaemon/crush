@@ -49,6 +49,7 @@ import (
 
 const (
 	DefaultSessionName = "Untitled Session"
+	verificationAgentType = "verification"
 
 	// Constants for auto-summarization thresholds
 	largeContextWindowThreshold = 200_000
@@ -401,6 +402,11 @@ func buildRuntimeSystemGuidance(
 	}
 	if needsVerificationContract {
 		b.WriteString("- Non-trivial recent implementation detected. Before claiming completion, run independent verification commands and report exact outcomes.\n")
+		if has(AgentToolName) {
+			b.WriteString("- Verification contract: spawn `agent` with `subagent_type=\"")
+			b.WriteString(verificationAgentType)
+			b.WriteString("\"` to validate changed files before final completion.\n")
+		}
 	}
 	if hasRecentFailedChecks {
 		b.WriteString("- Recent verification failure detected. Do not claim completion until failures are fixed or clearly scoped as unresolved.\n")

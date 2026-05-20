@@ -65,11 +65,13 @@ func TestBuildRuntimeSystemGuidance_IncludesDeniedToolHint(t *testing.T) {
 	agentTools := []fantasy.AgentTool{
 		&mockAgentTool{name: tools.ViewToolName},
 		&mockAgentTool{name: tools.EditToolName},
+		&mockAgentTool{name: AgentToolName},
 	}
 
-	guidance := buildRuntimeSystemGuidance(agentTools, false, tools.EditToolName, false, false, false, false, false, false, false, false, false, false, false, "")
+	guidance := buildRuntimeSystemGuidance(agentTools, false, tools.EditToolName, true, false, false, false, false, false, false, false, false, false, false, "")
 	require.True(t, strings.Contains(guidance, "recently denied permission"))
 	require.True(t, strings.Contains(guidance, tools.EditToolName))
+	require.True(t, strings.Contains(guidance, "subagent_type=\"verification\""))
 }
 
 func TestHasNonTrivialRecentImplementation(t *testing.T) {
