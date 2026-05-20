@@ -2,12 +2,47 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"charm.land/fantasy"
 	"github.com/charmbracelet/crush/internal/agent/tools"
 	"github.com/charmbracelet/crush/internal/message"
 )
+
+func toolFilePath(toolName, input string) string {
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(input), &payload); err != nil {
+		return ""
+	}
+	path, _ := payload["file_path"].(string)
+	if path == "" {
+		return ""
+	}
+	switch toolName {
+	case tools.ViewToolName, tools.EditToolName, tools.MultiEditToolName:
+		return path
+	default:
+		return ""
+	}
+}
+
+func hasRecentViewForPath(msgs []message.Message, path string) bool {
+	if path == "" {
+		return false
+	}
+	for i := len(msgs) - 1; i >= 0 && len(msgs)-i <= 60; i-- {
+		for _, tc := range msgs[i].ToolCalls() {
+			if tc.Name != tools.ViewToolName {
+				continue
+			}
+			if toolFilePath(tc.Name, tc.Input) == path {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 type denyRetryPolicyTool struct {
 	inner    fantasy.AgentTool
@@ -79,6 +114,13 @@ func (d *denyRetryPolicyTool) Run(ctx context.Context, call fantasy.ToolCall) (f
 				}
 				if recentFailedIdenticalCalls == 1 {
 					return fantasy.NewTextErrorResponse("Previous identical call was denied or failed. Use a different approach or clarify intent before retrying."), nil
+				}
+			}
+			switch call.Name {
+			case tools.EditToolName, tools.MultiEditToolName:
+				path := toolFilePath(call.Name, call.Input)
+				if path != "" && !hasRecentViewForPath(msgs, path) {
+					return fantasy.NewTextErrorResponse("Read-before-edit policy: call view on this file before editing."), nil
 				}
 			}
 		}
