@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/crush/internal/backend"
 	"github.com/charmbracelet/crush/internal/proto"
+	"github.com/charmbracelet/crush/internal/pubsub"
 	"github.com/charmbracelet/crush/internal/session"
 )
 
@@ -208,6 +209,7 @@ func (c *controllerV1) handleGetWorkspaceEvents(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	lastGoalSnapshot := make(map[string]string)
 
 	for {
 		select {
@@ -222,14 +224,51 @@ func (c *controllerV1) handleGetWorkspaceEvents(w http.ResponseWriter, r *http.R
 			if wrapped == nil {
 				continue
 			}
-			data, err := json.Marshal(wrapped)
-			if err != nil {
-				c.server.logError(r, "Failed to marshal event", "error", err)
-				continue
+			payloads := []*pubsub.Payload{wrapped}
+			if sEv, ok := ev.Payload.(pubsub.Event[session.Session]); ok {
+				curr := ""
+				if sEv.Payload.Goal != nil {
+					if b, mErr := json.Marshal(goalToProto(sEv.Payload.Goal)); mErr == nil {
+						curr = string(b)
+					}
+				}
+				prev, seen := lastGoalSnapshot[sEv.Payload.ID]
+				if !seen {
+					lastGoalSnapshot[sEv.Payload.ID] = curr
+				} else if prev != curr {
+					lastGoalSnapshot[sEv.Payload.ID] = curr
+					if sEv.Payload.Goal == nil {
+						payloads = append(payloads, envelope(pubsub.PayloadTypeGoalNotification, pubsub.Event[proto.GoalNotification]{
+							Type: pubsub.UpdatedEvent,
+							Payload: proto.GoalNotification{
+								SessionID: sEv.Payload.ID,
+								Method:    "thread/goal/cleared",
+							},
+						}))
+					} else {
+						payloads = append(payloads, envelope(pubsub.PayloadTypeGoalNotification, pubsub.Event[proto.GoalNotification]{
+							Type: pubsub.UpdatedEvent,
+							Payload: proto.GoalNotification{
+								SessionID: sEv.Payload.ID,
+								Method:    "thread/goal/updated",
+								Goal:      goalToProto(sEv.Payload.Goal),
+							},
+						}))
+					}
+				}
 			}
-
-			fmt.Fprintf(w, "data: %s\n\n", data)
-			flusher.Flush()
+			for _, payload := range payloads {
+				if payload == nil {
+					continue
+				}
+				data, err := json.Marshal(payload)
+				if err != nil {
+					c.server.logError(r, "Failed to marshal event", "error", err)
+					continue
+				}
+				fmt.Fprintf(w, "data: %s\n\n", data)
+				flusher.Flush()
+			}
 		}
 	}
 }

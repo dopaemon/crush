@@ -160,6 +160,10 @@ func (c *Client) SubscribeEvents(ctx context.Context, id string) (<-chan any, er
 				var e pubsub.Event[proto.Session]
 				_ = json.Unmarshal(p.Payload, &e)
 				sendEvent(ctx, events, e)
+			case pubsub.PayloadTypeGoalNotification:
+				var e pubsub.Event[proto.GoalNotification]
+				_ = json.Unmarshal(p.Payload, &e)
+				sendEvent(ctx, events, e)
 			case pubsub.PayloadTypeFile:
 				var e pubsub.Event[proto.File]
 				_ = json.Unmarshal(p.Payload, &e)

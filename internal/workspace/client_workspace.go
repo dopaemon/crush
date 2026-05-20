@@ -663,6 +663,8 @@ func (w *ClientWorkspace) translateEvent(ev any) tea.Msg {
 			Type:    e.Type,
 			Payload: protoToSession(e.Payload),
 		}
+	case pubsub.Event[proto.GoalNotification]:
+		return e
 	case pubsub.Event[proto.File]:
 		return pubsub.Event[history.File]{
 			Type:    e.Type,

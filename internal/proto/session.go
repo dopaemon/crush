@@ -32,3 +32,9 @@ type Goal struct {
 	CreatedAt       int64  `json:"created_at"`
 	UpdatedAt       int64  `json:"updated_at"`
 }
+
+type GoalNotification struct {
+	SessionID string `json:"session_id"`
+	Method    string `json:"method"`
+	Goal      *Goal  `json:"goal,omitempty"`
+}

@@ -22,6 +22,7 @@ const (
 	PayloadTypePermissionNotification PayloadType = "permission_notification"
 	PayloadTypeMessage                PayloadType = "message"
 	PayloadTypeSession                PayloadType = "session"
+	PayloadTypeGoalNotification       PayloadType = "goal_notification"
 	PayloadTypeFile                   PayloadType = "file"
 	PayloadTypeAgentEvent             PayloadType = "agent_event"
 	PayloadTypeSkillsEvent            PayloadType = "skills_event"
