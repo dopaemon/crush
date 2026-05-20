@@ -74,6 +74,32 @@ func containsCommandChaining(s string) bool {
 	})
 }
 
+var dedicatedToolPreferredCommands = map[string]string{
+	"cat":  "Use `view` to read files.",
+	"head": "Use `view` with an appropriate `limit`.",
+	"tail": "Use `view` with an appropriate `offset` and `limit`.",
+	"find": "Use `glob` or `ls` for file discovery.",
+	"grep": "Use `grep` tool for content search.",
+	"rg":   "Use `grep` tool for content search.",
+	"sed":  "Use `edit`/`multiedit` for file edits and `view` for reading.",
+	"awk":  "Use dedicated tools (`view`/`grep`/`edit`) instead of shell text processing.",
+}
+
+func dedicatedToolHintForCommand(cmd string) string {
+	trimmed := strings.TrimSpace(strings.ToLower(cmd))
+	if trimmed == "" || containsCommandChaining(trimmed) {
+		return ""
+	}
+	parts := strings.Fields(trimmed)
+	if len(parts) == 0 {
+		return ""
+	}
+	if hint, ok := dedicatedToolPreferredCommands[parts[0]]; ok {
+		return hint
+	}
+	return ""
+}
+
 func init() {
 	if runtime.GOOS == "windows" {
 		safeCommands = append(

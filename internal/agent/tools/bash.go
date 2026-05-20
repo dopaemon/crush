@@ -198,6 +198,9 @@ func NewBashTool(permissions permission.Service, workingDir string, attribution 
 			if params.Command == "" {
 				return fantasy.NewTextErrorResponse("missing command"), nil
 			}
+			if hint := dedicatedToolHintForCommand(params.Command); hint != "" {
+				return fantasy.NewTextErrorResponse("This command should use dedicated tools. " + hint), nil
+			}
 
 			// Determine working directory
 			execWorkingDir := cmp.Or(params.WorkingDir, workingDir)
