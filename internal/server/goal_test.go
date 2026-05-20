@@ -30,3 +30,14 @@ func TestParseServerGoalStatus(t *testing.T) {
 		require.Equal(t, tc.want, got, tc.in)
 	}
 }
+
+func TestShouldEmitGoalNotification(t *testing.T) {
+	t.Parallel()
+
+	goal := &session.Goal{Objective: "x"}
+	require.True(t, shouldEmitGoalNotification(false, "", `{"objective":"x"}`, goal))
+	require.False(t, shouldEmitGoalNotification(false, "", "", nil))
+	require.False(t, shouldEmitGoalNotification(true, "a", "a", goal))
+	require.True(t, shouldEmitGoalNotification(true, "a", "b", goal))
+	require.True(t, shouldEmitGoalNotification(true, "a", "", nil))
+}

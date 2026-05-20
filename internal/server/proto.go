@@ -235,10 +235,8 @@ func (c *controllerV1) handleGetWorkspaceEvents(w http.ResponseWriter, r *http.R
 					}
 				}
 				prev, seen := lastGoalSnapshot[sEv.Payload.ID]
-				if !seen {
-					lastGoalSnapshot[sEv.Payload.ID] = curr
-				} else if prev != curr {
-					lastGoalSnapshot[sEv.Payload.ID] = curr
+				lastGoalSnapshot[sEv.Payload.ID] = curr
+				if shouldEmitGoalNotification(seen, prev, curr, sEv.Payload.Goal) {
 					if sEv.Payload.Goal == nil {
 						payloads = append(payloads, envelope(pubsub.PayloadTypeGoalNotification, pubsub.Event[proto.GoalNotification]{
 							Type: pubsub.UpdatedEvent,
@@ -648,6 +646,13 @@ func parseServerGoalStatus(input string) (session.GoalStatus, bool) {
 	default:
 		return "", false
 	}
+}
+
+func shouldEmitGoalNotification(seen bool, prev, curr string, goal *session.Goal) bool {
+	if !seen {
+		return goal != nil
+	}
+	return prev != curr
 }
 
 // handleGetWorkspaceSessionUserMessages returns user messages for a session.
