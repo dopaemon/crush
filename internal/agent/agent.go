@@ -138,7 +138,21 @@ type SessionAgentOptions struct {
 	Notify               pubsub.Publisher[notify.Notification]
 }
 
-func buildRuntimeSystemGuidance(agentTools []fantasy.AgentTool, isSubAgent bool) string {
+func lastDeniedToolFromHistory(msgs []message.Message) string {
+	for i := len(msgs) - 1; i >= 0; i-- {
+		for _, tr := range msgs[i].ToolResults() {
+			if !tr.IsError {
+				continue
+			}
+			if strings.Contains(strings.ToLower(tr.Content), "user denied permission") {
+				return tr.Name
+			}
+		}
+	}
+	return ""
+}
+
+func buildRuntimeSystemGuidance(agentTools []fantasy.AgentTool, isSubAgent bool, lastDeniedTool string) string {
 	toolset := map[string]struct{}{}
 	for _, t := range agentTools {
 		toolset[t.Info().Name] = struct{}{}
@@ -178,6 +192,11 @@ func buildRuntimeSystemGuidance(agentTools []fantasy.AgentTool, isSubAgent bool)
 	}
 	if isSubAgent {
 		b.WriteString("- You are a subagent: execute directly and avoid recursive delegation unless explicitly required.\n")
+	}
+	if lastDeniedTool != "" {
+		b.WriteString("- The user recently denied permission for tool `")
+		b.WriteString(lastDeniedTool)
+		b.WriteString("`; avoid retrying it unchanged and choose a safer alternative or ask for clarification.\n")
 	}
 	b.WriteString("- If a tool call is denied, do not retry the exact same call unchanged.\n")
 	b.WriteString("- Report verification outcomes faithfully; do not claim checks passed without evidence.\n")
@@ -231,8 +250,6 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 	promptPrefix := a.systemPromptPrefix.Get()
 	var instructions strings.Builder
 
-	systemPrompt += "\n\n" + buildRuntimeSystemGuidance(agentTools, a.isSubAgent)
-
 	for _, server := range mcp.GetStates() {
 		if server.State != mcp.StateConnected {
 			continue
@@ -269,6 +286,7 @@ func (a *sessionAgent) Run(ctx context.Context, call SessionAgentCall) (*fantasy
 	if err != nil {
 		return nil, fmt.Errorf("failed to get session messages: %w", err)
 	}
+	systemPrompt += "\n\n" + buildRuntimeSystemGuidance(agentTools, a.isSubAgent, lastDeniedToolFromHistory(msgs))
 
 	var wg sync.WaitGroup
 	// Generate title if first message.
