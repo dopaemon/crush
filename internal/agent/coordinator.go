@@ -585,7 +585,8 @@ func (c *coordinator) buildTools(ctx context.Context, agent config.Agent, isSubA
 	// Wrap tools with deny-retry policy enforcement so identical retries
 	// after explicit user denial get redirected toward alternative paths.
 	for i, tool := range filteredTools {
-		filteredTools[i] = newDenyRetryPolicyTool(tool, c.messages)
+		filteredTools[i] = newSubagentPolicyTool(tool, isSubAgent)
+		filteredTools[i] = newDenyRetryPolicyTool(filteredTools[i], c.messages)
 	}
 
 	return filteredTools, nil
